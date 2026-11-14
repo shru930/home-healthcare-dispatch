@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+/*
+  Visual language: calm clinical software. Flat surfaces, hairline borders, one navy accent,
+  serif headings for an editorial feel. No gradients, glows or blur.
+*/
+@theme {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+
+  /* brand = deep hospital navy (replaces the default teal everywhere) */
+  --color-brand-50: #f3f5f9;
+  --color-brand-100: #e4e9f1;
+  --color-brand-200: #c9d3e2;
+  --color-brand-300: #a2b3cb;
+  --color-brand-400: #7088aa;
+  --color-brand-500: #4d688f;
+  --color-brand-600: #37527a;
+  --color-brand-700: #2b4266;
+  --color-brand-800: #223453;
+  --color-brand-900: #1b2a43;
+
+  --color-paper: #f7f6f2;
+  --color-ink: #1d2433;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+h1, h2, h3, .font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+::selection { background: #c9d3e2; }
+* { scrollbar-width: thin; scrollbar-color: #c4c2ba transparent; }
+
+@utility card {
+  @apply rounded-lg border border-stone-200 bg-white;
+}
+@utility card-hover {
+  @apply transition-colors hover:border-stone-300;
+}
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-md px-3.5 py-2 text-sm font-medium transition-colors cursor-pointer select-none disabled:opacity-50 disabled:cursor-not-allowed;
+}
+@utility btn-primary {
+  @apply btn bg-brand-700 text-white hover:bg-brand-800;
+}
+@utility btn-secondary {
+  @apply btn border border-stone-300 bg-white text-stone-700 hover:bg-stone-50 hover:text-stone-900;
+}
+@utility btn-danger {
+  @apply btn bg-red-700 text-white hover:bg-red-800;
+}
+@utility input {
+  @apply block w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 placeholder:text-stone-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/15;
+}
+@utility label {
+  @apply block text-xs font-medium text-stone-600 mb-1.5;
+}
+@utility field-error {
+  @apply mt-1.5 text-xs text-red-700;
+}
+@utility eyebrow {
+  @apply text-xs font-medium uppercase tracking-wider text-stone-500;
+}
+@utility animate-fade-up {
+  animation: none;
+}

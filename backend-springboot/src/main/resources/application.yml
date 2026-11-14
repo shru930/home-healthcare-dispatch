@@ -1,0 +1,81 @@
+server:
+  port: ${SERVER_PORT:8090}
+
+spring:
+  application:
+    name: home-healthcare-dispatch
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/homecare}
+    username: ${DB_USERNAME:homecare}
+    password: ${DB_PASSWORD:}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  flyway:
+    enabled: true
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+# Camunda 8.8 (Zeebe gRPC + Orchestration Cluster REST API). Defaults point at a local Camunda 8 Run.
+camunda:
+  client:
+    mode: self-managed
+    grpc-address: ${CAMUNDA_GRPC_ADDRESS:http://localhost:26500}
+    rest-address: ${CAMUNDA_REST_ADDRESS:http://localhost:8080}
+    worker:
+      defaults:
+        max-jobs-active: 16
+        request-timeout: PT10S
+
+homecare:
+  demo-mode: ${HOMECARE_DEMO_MODE:true}
+  camunda-rest-url: ${CAMUNDA_REST_ADDRESS:http://localhost:8080}
+  processes:
+    main-process-id: home-healthcare-dispatch
+    pharmacy-process-id: pharmacy-prescription-fulfillment
+  timers:
+    visit-window: ${TIMER_VISIT_WINDOW:PT10M}
+    physio-window: ${TIMER_PHYSIO_WINDOW:PT10M}
+    doctor-review-reminder: ${TIMER_DOCTOR_REMINDER:PT2M}
+    intervention-timeout: ${TIMER_INTERVENTION_TIMEOUT:PT15M}
+    delivery-reminder: ${TIMER_DELIVERY_REMINDER:PT2M}
+    delivery-timeout: ${TIMER_DELIVERY_TIMEOUT:PT30M}
+    nurse-retry-wait: ${TIMER_NURSE_RETRY:PT15S}
+  risk:
+    elevated-pain-score: 6
+    critical-pain-score: 8
+    fever-temperature: 38.0
+    critical-temperature: 39.0
+  matching:
+    max-travel-minutes: 60
+    max-nurse-search-attempts: 3
+  mail:
+    embedded-server-enabled: ${MAIL_EMBEDDED_SERVER:true}
+    port: ${SMTP_PORT:3025}
+    username: ${SMTP_USERNAME:hh-notify}
+    password: ${SMTP_PASSWORD:}
+    from: ${MAIL_FROM:care-team@homecare.example}
+  sms:
+    api-key: ${SMS_API_KEY:}
+  google:
+    api-key: ${GOOGLE_MAPS_API_KEY:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  file:
+    name: ${LOG_FILE:logs/backend.log}
+  level:
+    com.homecare: INFO
+    io.camunda.client.jobhandling: WARN

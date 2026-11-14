@@ -1,0 +1,58 @@
+{
+  "executionPlatform": "Camunda Cloud",
+  "executionPlatformVersion": "8.8.0",
+  "exporter": {
+    "name": "Camunda Modeler",
+    "version": "5.50.1"
+  },
+  "schemaVersion": 16,
+  "id": "manual-nurse-form",
+  "type": "default",
+  "components": [
+    {
+      "type": "text",
+      "id": "Heading",
+      "text": "# Arrange nurse manually\n\nNo nurse could be matched automatically. Choose a nurse (by ID) after calling them."
+    },
+    {
+      "id": "Field_0",
+      "type": "textfield",
+      "key": "patientName",
+      "label": "Patient",
+      "readonly": true
+    },
+    {
+      "id": "Field_1",
+      "type": "textfield",
+      "key": "patientAddress",
+      "label": "Address",
+      "readonly": true
+    },
+    {
+      "id": "Field_2",
+      "type": "textfield",
+      "key": "requiredSkill",
+      "label": "Required skill",
+      "readonly": true
+    },
+    {
+      "id": "Field_3",
+      "type": "number",
+      "key": "selectedNurseId",
+      "label": "Nurse ID",
+      "validate": {
+        "required": true,
+        "min": 1
+      }
+    },
+    {
+      "id": "Field_4",
+      "type": "textarea",
+      "key": "manualAssignmentNote",
+      "label": "Arrangement note",
+      "validate": {
+        "required": true
+      }
+    }
+  ]
+}

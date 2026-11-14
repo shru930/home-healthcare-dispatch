@@ -1,0 +1,78 @@
+{
+  "executionPlatform": "Camunda Cloud",
+  "executionPlatformVersion": "8.8.0",
+  "exporter": {
+    "name": "Camunda Modeler",
+    "version": "5.50.1"
+  },
+  "schemaVersion": 16,
+  "id": "doctor-review-form",
+  "type": "default",
+  "components": [
+    {
+      "type": "text",
+      "id": "Heading",
+      "text": "# Doctor review\n\nReview the escalated assessment and decide the next step."
+    },
+    {
+      "id": "Field_0",
+      "type": "textfield",
+      "key": "patientName",
+      "label": "Patient",
+      "readonly": true
+    },
+    {
+      "id": "Field_1",
+      "type": "textfield",
+      "key": "riskLevel",
+      "label": "Risk flag",
+      "readonly": true
+    },
+    {
+      "id": "Field_2",
+      "type": "textfield",
+      "key": "painScore",
+      "label": "Pain score",
+      "readonly": true
+    },
+    {
+      "id": "Field_3",
+      "type": "textfield",
+      "key": "temperature",
+      "label": "Temperature",
+      "readonly": true
+    },
+    {
+      "id": "Field_4",
+      "type": "select",
+      "key": "doctorDecision",
+      "label": "Decision",
+      "validate": {
+        "required": true
+      },
+      "values": [
+        {
+          "label": "Continue home care with changes",
+          "value": "HOME_CARE"
+        },
+        {
+          "label": "Urgent home visit",
+          "value": "URGENT_VISIT"
+        },
+        {
+          "label": "Readmit to hospital",
+          "value": "READMIT"
+        }
+      ]
+    },
+    {
+      "id": "Field_5",
+      "type": "textarea",
+      "key": "doctorNotes",
+      "label": "Clinical notes",
+      "validate": {
+        "required": true
+      }
+    }
+  ]
+}

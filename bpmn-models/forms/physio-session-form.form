@@ -1,0 +1,67 @@
+{
+  "executionPlatform": "Camunda Cloud",
+  "executionPlatformVersion": "8.8.0",
+  "exporter": {
+    "name": "Camunda Modeler",
+    "version": "5.50.1"
+  },
+  "schemaVersion": 16,
+  "id": "physio-session-form",
+  "type": "default",
+  "components": [
+    {
+      "type": "text",
+      "id": "Heading",
+      "text": "# Physiotherapy session\n\nRecord the outcome of the session."
+    },
+    {
+      "id": "Field_0",
+      "type": "textfield",
+      "key": "patientName",
+      "label": "Patient",
+      "readonly": true
+    },
+    {
+      "id": "Field_1",
+      "type": "textfield",
+      "key": "session.focus",
+      "label": "Session focus",
+      "readonly": true
+    },
+    {
+      "id": "Field_2",
+      "type": "textfield",
+      "key": "session.date",
+      "label": "Date",
+      "readonly": true
+    },
+    {
+      "id": "Field_3",
+      "type": "select",
+      "key": "physioStatus",
+      "label": "Outcome",
+      "validate": {
+        "required": true
+      },
+      "values": [
+        {
+          "label": "Session completed",
+          "value": "COMPLETED"
+        },
+        {
+          "label": "Patient declined",
+          "value": "PATIENT_DECLINED"
+        }
+      ]
+    },
+    {
+      "id": "Field_4",
+      "type": "textarea",
+      "key": "physioNotes",
+      "label": "Notes",
+      "validate": {
+        "required": false
+      }
+    }
+  ]
+}

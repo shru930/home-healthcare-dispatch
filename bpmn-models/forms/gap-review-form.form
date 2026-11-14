@@ -1,0 +1,60 @@
+{
+  "executionPlatform": "Camunda Cloud",
+  "executionPlatformVersion": "8.8.0",
+  "exporter": {
+    "name": "Camunda Modeler",
+    "version": "5.50.1"
+  },
+  "schemaVersion": 16,
+  "id": "gap-review-form",
+  "type": "default",
+  "components": [
+    {
+      "type": "text",
+      "id": "Heading",
+      "text": "# Review care-plan gaps\n\nSome visits, sessions or deliveries were not completed."
+    },
+    {
+      "id": "Field_0",
+      "type": "textfield",
+      "key": "patientName",
+      "label": "Patient",
+      "readonly": true
+    },
+    {
+      "id": "Field_1",
+      "type": "textfield",
+      "key": "planSummary",
+      "label": "Summary",
+      "readonly": true
+    },
+    {
+      "id": "Field_2",
+      "type": "select",
+      "key": "gapReviewDecision",
+      "label": "Decision",
+      "validate": {
+        "required": true
+      },
+      "values": [
+        {
+          "label": "Accept and close",
+          "value": "ACCEPT_AND_CLOSE"
+        },
+        {
+          "label": "Follow-up booked",
+          "value": "FOLLOW_UP_BOOKED"
+        }
+      ]
+    },
+    {
+      "id": "Field_3",
+      "type": "textarea",
+      "key": "reviewNotes",
+      "label": "Notes",
+      "validate": {
+        "required": true
+      }
+    }
+  ]
+}

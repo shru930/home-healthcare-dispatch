@@ -1,0 +1,106 @@
+{
+  "executionPlatform": "Camunda Cloud",
+  "executionPlatformVersion": "8.8.0",
+  "exporter": {
+    "name": "Camunda Modeler",
+    "version": "5.50.1"
+  },
+  "schemaVersion": 16,
+  "id": "health-assessment-form",
+  "type": "default",
+  "components": [
+    {
+      "type": "text",
+      "id": "Heading",
+      "text": "# Home visit and health assessment\n\nRecord today's visit. High pain or infection indicators start the Readmission Risk Intervention. This is workflow support, not a diagnosis."
+    },
+    {
+      "id": "Field_0",
+      "type": "textfield",
+      "key": "patientName",
+      "label": "Patient",
+      "readonly": true
+    },
+    {
+      "id": "Field_1",
+      "type": "textfield",
+      "key": "careDay.day",
+      "label": "Care day",
+      "readonly": true
+    },
+    {
+      "id": "Field_2",
+      "type": "textfield",
+      "key": "patientAddress",
+      "label": "Address",
+      "readonly": true
+    },
+    {
+      "id": "Field_3",
+      "type": "select",
+      "key": "visitStatus",
+      "label": "Visit outcome",
+      "validate": {
+        "required": true
+      },
+      "values": [
+        {
+          "label": "Visit completed",
+          "value": "COMPLETED"
+        },
+        {
+          "label": "Visit incomplete",
+          "value": "INCOMPLETE"
+        }
+      ]
+    },
+    {
+      "id": "Field_4",
+      "type": "number",
+      "key": "painScore",
+      "label": "Pain score (0 to 10)",
+      "validate": {
+        "min": 0,
+        "max": 10
+      }
+    },
+    {
+      "id": "Field_5",
+      "type": "number",
+      "key": "temperature",
+      "label": "Temperature (°C)",
+      "decimalDigits": 1,
+      "validate": {
+        "min": 34,
+        "max": 43
+      }
+    },
+    {
+      "id": "Field_6",
+      "type": "checkbox",
+      "key": "woundRedness",
+      "label": "Redness around the wound"
+    },
+    {
+      "id": "Field_7",
+      "type": "checkbox",
+      "key": "woundDischarge",
+      "label": "Discharge from the wound"
+    },
+    {
+      "id": "Field_8",
+      "type": "checkbox",
+      "key": "swelling",
+      "label": "Swelling"
+    },
+    {
+      "id": "Field_9",
+      "type": "textarea",
+      "key": "nurseNotes",
+      "label": "Nurse notes",
+      "validate": {
+        "required": false
+      }
+    }
+  ]
+}

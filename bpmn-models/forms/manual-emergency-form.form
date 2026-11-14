@@ -1,0 +1,71 @@
+{
+  "executionPlatform": "Camunda Cloud",
+  "executionPlatformVersion": "8.8.0",
+  "exporter": {
+    "name": "Camunda Modeler",
+    "version": "5.50.1"
+  },
+  "schemaVersion": 16,
+  "id": "manual-emergency-form",
+  "type": "default",
+  "components": [
+    {
+      "type": "text",
+      "id": "Heading",
+      "text": "# Coordinate emergency manually\n\nThe urgent response service failed. Arrange help by phone."
+    },
+    {
+      "id": "Field_0",
+      "type": "textfield",
+      "key": "patientName",
+      "label": "Patient",
+      "readonly": true
+    },
+    {
+      "id": "Field_1",
+      "type": "textfield",
+      "key": "patientAddress",
+      "label": "Address",
+      "readonly": true
+    },
+    {
+      "id": "Field_2",
+      "type": "textfield",
+      "key": "familyPhone",
+      "label": "Family phone",
+      "readonly": true
+    },
+    {
+      "id": "Field_3",
+      "type": "select",
+      "key": "emergencyOutcome",
+      "label": "What was arranged",
+      "validate": {
+        "required": true
+      },
+      "values": [
+        {
+          "label": "Ambulance arranged",
+          "value": "AMBULANCE_ARRANGED"
+        },
+        {
+          "label": "Hospital contacted",
+          "value": "HOSPITAL_CONTACTED"
+        },
+        {
+          "label": "Doctor attended",
+          "value": "DOCTOR_ATTENDED"
+        }
+      ]
+    },
+    {
+      "id": "Field_4",
+      "type": "textarea",
+      "key": "emergencyNotes",
+      "label": "Notes",
+      "validate": {
+        "required": true
+      }
+    }
+  ]
+}

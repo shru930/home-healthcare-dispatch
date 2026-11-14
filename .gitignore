@@ -1,0 +1,11 @@
+.env
+*.log
+target/
+node_modules/
+dist/
+.idea/
+.vscode/
+*.iml
+camunda/connector-secrets.local.txt
+documentation/~$*
+logs/

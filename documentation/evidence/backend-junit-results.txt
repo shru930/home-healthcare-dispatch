@@ -1,0 +1,9 @@
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.044 s -- in com.homecare.dispatch.DomainLogicTest$NurseMatching
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.079 s -- in com.homecare.dispatch.DomainLogicTest$ReadmissionRisk
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.364 s -- in com.homecare.dispatch.DomainLogicTest
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 15.09 s -- in com.homecare.dispatch.PatientApiTest
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 11.90 s -- in com.homecare.dispatch.PersistenceTest
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.055 s -- in com.homecare.dispatch.service.TaskValidationTest
+[INFO] Tests run: 23, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS
+[INFO] Total time:  37.389 s

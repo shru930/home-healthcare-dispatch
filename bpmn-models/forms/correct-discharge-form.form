@@ -1,0 +1,64 @@
+{
+  "executionPlatform": "Camunda Cloud",
+  "executionPlatformVersion": "8.8.0",
+  "exporter": {
+    "name": "Camunda Modeler",
+    "version": "5.50.1"
+  },
+  "schemaVersion": 16,
+  "id": "correct-discharge-form",
+  "type": "default",
+  "components": [
+    {
+      "type": "text",
+      "id": "Heading",
+      "text": "# Correct discharge details\n\nValidation failed. Fix the contact details and confirm."
+    },
+    {
+      "id": "Field_0",
+      "type": "textfield",
+      "key": "patientName",
+      "label": "Patient",
+      "readonly": true
+    },
+    {
+      "id": "Field_1",
+      "type": "textfield",
+      "key": "patientPhone",
+      "label": "Patient phone (10 digits)",
+      "validate": {
+        "required": true,
+        "pattern": "^[0-9]{10}$"
+      }
+    },
+    {
+      "id": "Field_2",
+      "type": "textfield",
+      "key": "familyPhone",
+      "label": "Family phone (10 digits)",
+      "validate": {
+        "required": true,
+        "pattern": "^[0-9]{10}$"
+      }
+    },
+    {
+      "id": "Field_3",
+      "type": "textfield",
+      "key": "familyEmail",
+      "label": "Family e-mail",
+      "validate": {
+        "required": true,
+        "validationType": "email"
+      }
+    },
+    {
+      "id": "Field_4",
+      "type": "textfield",
+      "key": "dischargeDate",
+      "label": "Discharge date (YYYY-MM-DD)",
+      "validate": {
+        "required": true
+      }
+    }
+  ]
+}

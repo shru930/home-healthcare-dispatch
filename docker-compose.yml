@@ -1,0 +1,116 @@
+# Home Healthcare Nurse & Pharmacy Dispatch: full containerised stack.
+#
+#   cp .env.example .env                           # then fill in the passwords / keys
+#   docker compose up --build                      # PostgreSQL + backend + frontend, using Camunda 8 Run on the host
+#   docker compose --profile camunda up --build    # also run Camunda 8.8 + connectors + Elasticsearch in Docker
+#
+# Ports: frontend http://localhost:3000, backend http://localhost:8090, PostgreSQL 5433 (host) -> 5432 (container)
+
+name: home-healthcare-dispatch
+
+x-camunda-addresses: &camunda-addresses
+  CAMUNDA_GRPC_ADDRESS: ${CAMUNDA_GRPC_ADDRESS_DOCKER:-http://host.docker.internal:26500}
+  CAMUNDA_REST_ADDRESS: ${CAMUNDA_REST_ADDRESS_DOCKER:-http://host.docker.internal:8080}
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: homecare
+      POSTGRES_USER: ${DB_USERNAME:-homecare}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d homecare"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build: ./backend-springboot
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *camunda-addresses
+      DB_URL: jdbc:postgresql://postgres:5432/homecare
+      DB_USERNAME: ${DB_USERNAME:-homecare}
+      DB_PASSWORD: ${DB_PASSWORD}
+      HOMECARE_DEMO_MODE: ${HOMECARE_DEMO_MODE:-true}
+      MAIL_EMBEDDED_SERVER: ${MAIL_EMBEDDED_SERVER:-true}
+      SMTP_USERNAME: ${SMTP_USERNAME}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMS_API_KEY: ${SMS_API_KEY}
+      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY}
+    ports:
+      - "8090:8090"
+      - "3025:3025"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend-react
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------- optional: Camunda 8.8 in Docker
+  # Only needed when Camunda 8 Run is NOT running on the host. Needs about 4 GB of RAM.
+  elasticsearch:
+    profiles: ["camunda"]
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.17.3
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms1g -Xmx1g
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -vq '\"status\":\"red\"'"]
+      interval: 10s
+      retries: 30
+
+  camunda:
+    profiles: ["camunda"]
+    image: camunda/camunda:8.8.5
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      CAMUNDA_SECURITY_AUTHENTICATION_UNPROTECTEDAPI: "true"
+      CAMUNDA_SECURITY_AUTHORIZATIONS_ENABLED: "false"
+      CAMUNDA_DATA_SECONDARYSTORAGE_TYPE: elasticsearch
+      CAMUNDA_DATA_SECONDARYSTORAGE_ELASTICSEARCH_URL: http://elasticsearch:9200
+    ports:
+      - "8080:8080"
+      - "26500:26500"
+
+  connectors:
+    profiles: ["camunda"]
+    image: camunda/connectors-bundle:8.8.15
+    depends_on: [camunda]
+    environment:
+      CAMUNDA_CLIENT_GRPCADDRESS: http://camunda:26500
+      CAMUNDA_CLIENT_RESTADDRESS: http://camunda:8080
+      # Connector secrets referenced as {{secrets.NAME}} in the BPMN models (demo values point at the backend mocks)
+      DISTANCE_MATRIX_URL: ${DISTANCE_MATRIX_URL_DOCKER:-http://backend:8090/mock/google/maps/api/distancematrix/json}
+      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY}
+      SMS_GATEWAY_URL: ${SMS_GATEWAY_URL_DOCKER:-http://backend:8090/mock/sms/messages}
+      SMS_API_KEY: ${SMS_API_KEY}
+      SMTP_HOST: ${SMTP_HOST_DOCKER:-backend}
+      SMTP_PORT: ${SMTP_PORT:-3025}
+      SMTP_USERNAME: ${SMTP_USERNAME}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+    ports:
+      - "8086:8080"
+
+volumes:
+  pgdata:
+  esdata:
