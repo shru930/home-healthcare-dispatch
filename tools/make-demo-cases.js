@@ -13,7 +13,8 @@ async function start(first, last, lat, lng, mrn) {
     doctorName: 'Dr. Meera Rao', doctorEmail: 'meera.rao@citygeneral.example', requiredSkill: 'WOUND_CARE',
     physioSessions: [{ dayNumber: 2, focus: 'Bed mobility' }, { dayNumber: 4, focus: 'Walking with frame' }, { dayNumber: 6, focus: 'Stairs' }],
     prescriptions: [{ medication: 'Paracetamol 500mg', dosage: '1 tablet every 8 hours', quantity: 21, controlled: false, doctorApproved: true },
-                    { medication: 'Enoxaparin 40mg', dosage: '1 injection daily', quantity: 7, controlled: false, doctorApproved: true }] });
+                    { medication: 'Enoxaparin 40mg', dosage: '1 injection daily', quantity: 7, controlled: false, doctorApproved: true }],
+    timerOverrides: { interventionTimeout: 'PT12H', doctorReviewReminder: 'PT12H', visitWindow: 'PT12H', deliveryTimeout: 'PT12H' } });
   return String(w.processInstanceKey);
 }
 const doneTasks = new Set();
@@ -30,7 +31,7 @@ async function completeAssessment(key, vars) {
   const a = await start('Meena', 'Subramanian', 13.0012, 80.2565, 'MRN-DEMO-A' + s);
   await completeAssessment(a, { visitStatus: 'COMPLETED', painScore: 3, temperature: 37.0, woundRedness: false, woundDischarge: false, swelling: false, nurseNotes: 'Day 1: settled at home' });
   await completeAssessment(a, { visitStatus: 'COMPLETED', painScore: 2, temperature: 36.8, woundRedness: false, woundDischarge: false, swelling: true, nurseNotes: 'Day 2: mild swelling' });
-  console.log('A active, waiting for day 3:', a);
+  console.log('A active, waiting for the doctor review of day 2 (swelling = ELEVATED):', a);
   await api('POST', '/demo/faults', { fault: 'SMS_GATEWAY', mode: 'DOWN' });
   const b = await start('Ramesh', 'Babu', 12.9249, 80.1, 'MRN-DEMO-B' + s);
   await completeAssessment(b, { visitStatus: 'COMPLETED', painScore: 9, temperature: 38.9, woundRedness: true, woundDischarge: true, swelling: true, nurseNotes: 'Severe pain, discharge and fever' });

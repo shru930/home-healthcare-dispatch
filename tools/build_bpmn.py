@@ -101,11 +101,11 @@ class Model:
     def sub(self, nid, name, x0, y0, w, h, parent=None, ext='', mi=None):
         return self.node(nid, 'subProcess', name, x0 + w / 2, y0 + h / 2, parent, ext=ext, mi=mi, w=w, h=h)
 
-    def boundary(self, nid, host, name, body, x=None, side='B', interrupting=True, ext=''):
+    def boundary(self, nid, host, name, body, x=None, side='B', interrupting=True, ext='', label=None):
         hn = self.nodes[host]
         bx = x if x is not None else hn['cx']
         by = hn['cy'] + hn['h'] / 2 if side == 'B' else hn['cy'] - hn['h'] / 2
-        self.node(nid, 'boundaryEvent', name, bx, by, hn['parent'], ext=ext,
+        self.node(nid, 'boundaryEvent', name, bx, by, hn['parent'], ext=ext, label=label,
                   attrs=f' cancelActivity="{"true" if interrupting else "false"}" attachedToRef="{host}"', body=body)
 
     def error(self, code, name):
@@ -186,8 +186,9 @@ class Model:
             label = ''
             if f['name']:
                 (x1, y1), (x2, y2) = pts[0], pts[1]
-                lx, ly = f['lbl'] if f['lbl'] else ((x1 + x2) / 2 - 40 if y1 == y2 else x1 + 6, (y1 + y2) / 2 - 18 if y1 == y2 else (y1 + y2) / 2 - 7)
-                label = f'<bpmndi:BPMNLabel><dc:Bounds x="{lx:.0f}" y="{ly:.0f}" width="90" height="14" /></bpmndi:BPMNLabel>'
+                lw = f['lbl'][2] if f['lbl'] and len(f['lbl']) == 3 else 90
+                lx, ly = f['lbl'][:2] if f['lbl'] else ((x1 + x2) / 2 - 40 if y1 == y2 else x1 + 6, (y1 + y2) / 2 - 18 if y1 == y2 else (y1 + y2) / 2 - 7)
+                label = f'<bpmndi:BPMNLabel><dc:Bounds x="{lx:.0f}" y="{ly:.0f}" width="{lw}" height="14" /></bpmndi:BPMNLabel>'
             D.append(f'<bpmndi:BPMNEdge id="{f["id"]}_di" bpmnElement="{f["id"]}">{wps}{label}</bpmndi:BPMNEdge>')
         return '\n'.join(D)
 
@@ -221,7 +222,7 @@ M.node('Start_Discharged', 'startEvent', 'Patient discharged', 100, Y)
 M.node('Task_ValidateDischarge', 'serviceTask', 'Validate discharge details', 220, Y,
        ext=worker('hh.validate-discharge', inputs=['workflowId', 'patientId', 'patientPhone', 'familyPhone', 'familyEmail',
                                                    'dischargeDate', 'patientLat', 'patientLng', 'prescriptions']))
-M.node('Gw_DischargeValid', 'exclusiveGateway', 'Details valid?', 360, Y)
+M.node('Gw_DischargeValid', 'exclusiveGateway', 'Details valid?', 360, Y, label=(305, 352))
 M.node('Task_CorrectDischarge', 'userTask', 'Correct discharge details', 360, 530,
        ext=user_task('correct-discharge-form', groups='coordinators',
                      inputs=['patientName', 'validationErrors', 'patientPhone', 'familyPhone', 'familyEmail', 'dischargeDate'],
@@ -232,7 +233,7 @@ M.node('Task_GenerateCarePlan', 'serviceTask', 'Generate 7-day care plan', 480, 
 M.node('Task_FetchNurses', 'serviceTask', 'Retrieve available nurses', 640, Y,
        ext=worker('hh.fetch-available-nurses', inputs=['workflowId', 'requiredSkill', ('=nurseSearchAttempts', 'nurseSearchAttempts')],
                   outputs=['candidateNurses', 'nurseCount', 'nurseSearchAttempts', 'nurseDestinations']))
-M.node('Gw_NursesFound', 'exclusiveGateway', 'Nurses available?', 780, Y, label=(800, 430))
+M.node('Gw_NursesFound', 'exclusiveGateway', 'Nurses found?', 780, Y, label=(788, 446))
 M.node('Timer_NurseRetry', 'intermediateCatchEvent', 'Wait before retry', 780, 280, body=timer('=nurseRetryWait'), label=(800, 255))
 M.node('Task_DistanceMatrix', 'serviceTask', 'Get travel times (Google Distance Matrix)', 920, Y, attrs=REST_ATTRS,
        ext=rest('GET', '{{secrets.DISTANCE_MATRIX_URL}}',
@@ -240,16 +241,16 @@ M.node('Task_DistanceMatrix', 'serviceTask', 'Get travel times (Google Distance 
                 result='={distanceMatrix: response.body, distanceSource: "DISTANCE_MATRIX_API"}',
                 error='=if is defined(error) then bpmnError("DISTANCE_API_ERROR", "Distance Matrix call failed: " + error.message) '
                       'else null'))
-M.boundary('Err_DistanceApi', 'Task_DistanceMatrix', 'Distance API error', M.error('DISTANCE_API_ERROR', 'Distance API error'))
+M.boundary('Err_DistanceApi', 'Task_DistanceMatrix', 'Distance API error', M.error('DISTANCE_API_ERROR', 'Distance API error'), label=(926, 466))
 M.node('Task_FallbackDistance', 'serviceTask', 'Rank nurses by straight-line distance', 920, 540,
        ext=worker('hh.rank-nurses-fallback', inputs=['candidateNurses', 'patientLat', 'patientLng']))
 M.node('Task_MatchNurse', 'serviceTask', 'Select nearest suitable nurse', 1080, Y,
        ext=worker('hh.match-nurse', inputs=['workflowId', 'candidateNurses', ('=distanceMatrix', 'distanceMatrix'),
                                             ('=nurseDistances', 'nurseDistances'), 'distanceSource', 'maxTravelMinutes'],
                   outputs=['nurseDistances', 'selectedNurseId', 'selectedDistanceMeters', 'selectedTravelSeconds', 'assignmentMode']))
-M.boundary('Err_DistanceInvalid', 'Task_MatchNurse', 'Invalid matrix response', '<bpmn:errorEventDefinition errorRef="Error_DISTANCE_API_ERROR" />',
-           x=1060, side='T')
-M.boundary('Err_NoNurse', 'Task_MatchNurse', 'No suitable nurse', M.error('NO_SUITABLE_NURSE', 'No suitable nurse'), x=1110)
+M.boundary('Err_DistanceInvalid', 'Task_MatchNurse', 'Unusable response', '<bpmn:errorEventDefinition errorRef="Error_DISTANCE_API_ERROR" />',
+           x=1080, label=(990, 586))
+M.boundary('Err_NoNurse', 'Task_MatchNurse', 'No suitable nurse', M.error('NO_SUITABLE_NURSE', 'No suitable nurse'), x=1120, label=(1126, 600))
 M.node('Task_ManualNurse', 'userTask', 'Arrange nurse manually', 1240, 670,
        ext=user_task('manual-nurse-form', groups='coordinators', inputs=['patientName', 'patientAddress', 'requiredSkill',
                                                                          ('=nurseDistances', 'nurseDistances')],
@@ -265,14 +266,14 @@ ASSIGN_BODY = ('="Dear " + familyContactName + ",\\n\\n" + patientName + " is en
 M.node('Task_EmailAssignment', 'serviceTask', 'E-mail family: nurse assigned', 1400, Y,
        ext=email('="Home-care nurse assigned for " + patientName', ASSIGN_BODY, '={familyNotified: true}',
                  '=if is defined(error) then bpmnError("NOTIFICATION_FAILED", "E-mail failed: " + error.message) else null'))
-M.boundary('Err_EmailAssign', 'Task_EmailAssignment', 'E-mail failed', M.error('NOTIFICATION_FAILED', 'Notification failed'))
+M.boundary('Err_EmailAssign', 'Task_EmailAssignment', 'E-mail failed', M.error('NOTIFICATION_FAILED', 'Notification failed'), label=(1406, 462))
 M.node('Task_SmsAssignment', 'serviceTask', 'SMS family (fallback)', 1400, 540, attrs=REST_ATTRS,
        ext=rest('POST', '{{secrets.SMS_GATEWAY_URL}}', auth=('bearer', '{{secrets.SMS_API_KEY}}'),
                 body='={to: familyPhone, category: "NURSE_ASSIGNMENT", message: "Nurse " + assignedNurse.fullName + " will visit " + '
                      'patientName + " daily from " + careStartDate + ". City Home Care"}',
                 result='={familyNotified: true, smsSid: response.body.sid}',
                 error='=if is defined(error) then bpmnError("NOTIFICATION_FAILED", "SMS failed: " + error.message) else null'))
-M.boundary('Err_SmsAssign', 'Task_SmsAssignment', 'SMS failed', '<bpmn:errorEventDefinition errorRef="Error_NOTIFICATION_FAILED" />')
+M.boundary('Err_SmsAssign', 'Task_SmsAssignment', 'SMS failed', '<bpmn:errorEventDefinition errorRef="Error_NOTIFICATION_FAILED" />', label=(1406, 602))
 M.node('Task_RecordNotifyFailure', 'serviceTask', 'Record failed notification', 1400, 670,
        ext=worker('hh.record-notification-failure', inputs=['patientId', 'familyEmail', 'familyPhone',
                                                              ('="NURSE_ASSIGNMENT"', 'notificationCategory'),
@@ -292,7 +293,7 @@ M.node('Task_BookPhysio', 'serviceTask', 'Book physiotherapy appointment', 1880,
 M.node('Task_PhysioSession', 'userTask', 'Record physiotherapy session', 2040, 160, parent='Sub_Physio',
        ext=user_task('physio-session-form', assignee='=physiotherapist', groups='physiotherapists',
                      inputs=['patientName', 'patientAddress', 'session', 'appointmentId'], outputs=['physioStatus', 'physioNotes']))
-M.boundary('Timer_PhysioWindow', 'Task_PhysioSession', 'Appointment window passed', timer('=physioWindow'))
+M.boundary('Timer_PhysioWindow', 'Task_PhysioSession', 'Window passed', timer('=physioWindow'), label=(2046, 214))
 M.node('Task_MissedPhysio', 'serviceTask', 'Record missed appointment', 2040, 280, parent='Sub_Physio',
        ext=worker('hh.record-missed-physio', inputs=['patientId', 'appointmentId', 'session']))
 M.node('End_PhysioMissed', 'endEvent', 'Session missed', 2180, 280, parent='Sub_Physio')
@@ -301,7 +302,7 @@ M.node('Task_CompletePhysio', 'serviceTask', 'Save session outcome', 2200, 160, 
 M.node('End_Physio', 'endEvent', 'Session recorded', 2340, 160, parent='Sub_Physio')
 
 # ---- Track 2: pharmacy, parallel multi-instance call activity
-M.node('Call_Pharmacy', 'callActivity', 'Pharmacy prescription fulfilment (per prescription)', 1840, Y,
+M.node('Call_Pharmacy', 'callActivity', 'Pharmacy fulfilment', 1840, Y,
        ext='<zeebe:calledElement processId="pharmacy-prescription-fulfillment" propagateAllChildVariables="false" propagateAllParentVariables="false" />'
            + io(inputs=['workflowId', 'patientId', 'patientName', 'familyPhone', 'patientAddress', 'prescription', 'deliveryReminder',
                         'deliveryTimeout'] + NULLS('fulfillmentStatus', 'deliveryRef', 'fulfillmentNote'),
@@ -328,7 +329,7 @@ M.node('Task_HealthAssessment', 'userTask', 'Home visit and health assessment', 
                      inputs=['patientName', 'patientAddress', 'careDay', 'visitId', 'surgeryType'],
                      outputs=['visitStatus', ('=painScore', 'painScore'), ('=temperature', 'temperature'), ('=woundRedness', 'woundRedness'),
                               ('=woundDischarge', 'woundDischarge'), ('=swelling', 'swelling'), ('=nurseNotes', 'nurseNotes')]))
-M.boundary('Timer_VisitWindow', 'Task_HealthAssessment', 'Visit window passed', timer('=visitWindow'))
+M.boundary('Timer_VisitWindow', 'Task_HealthAssessment', 'Visit window passed', timer('=visitWindow'), label=(2046, 706))
 M.node('Task_MissedVisit', 'serviceTask', 'Record missed visit', 2040, 940, parent=P,
        ext=worker('hh.record-missed-visit', inputs=['patientId', 'visitId', 'careDay']))
 M.node('End_VisitMissed', 'endEvent', 'Visit missed', 2180, 940, parent=P)
@@ -339,7 +340,7 @@ M.node('End_VisitIncomplete', 'endEvent', 'Follow-up arranged', 2320, 800, paren
 M.node('Task_EvaluateRisk', 'serviceTask', 'Evaluate readmission risk', 2300, VY, parent=P,
        ext=worker('hh.evaluate-risk', inputs=['workflowId', 'visitId', 'careDay', 'painScore', 'temperature', 'woundRedness',
                                               'woundDischarge', 'swelling', ('=nurseNotes', 'nurseNotes')]))
-M.node('Gw_Risk', 'exclusiveGateway', 'Risk level?', 2440, VY, parent=P, label=(2455, 670))
+M.node('Gw_Risk', 'exclusiveGateway', 'Risk level?', 2440, VY, parent=P, label=(2380, 668))
 M.node('End_VisitNormal', 'endEvent', 'Visit done, normal risk', 2560, 550, parent=P)
 
 # Readmission Risk Intervention (embedded sub-process with error + timer boundary events)
@@ -349,7 +350,7 @@ RY = 680
 M.node('Start_Risk', 'startEvent', 'High pain or infection reported', 2580, RY, parent=R, label=(2525, 702))
 M.node('Task_OpenIntervention', 'serviceTask', 'Open intervention and alert doctor', 2700, RY, parent=R,
        ext=worker('hh.open-intervention', inputs=['workflowId', 'patientId', 'patientName', 'assessmentId', 'riskLevel', 'riskReasons']))
-M.node('Gw_Severity', 'exclusiveGateway', 'Severity?', 2840, RY, parent=R, label=(2855, 650))
+M.node('Gw_Severity', 'exclusiveGateway', 'Severity?', 2840, RY, parent=R, label=(2760, 636))
 M.node('Task_DispatchEmergency', 'serviceTask', 'Dispatch urgent response', 2960, RY, parent=R,
        ext=worker('hh.dispatch-emergency', inputs=['interventionId', 'patientAddress']))
 M.node('Task_SmsCritical', 'serviceTask', 'SMS family: critical alert', 3110, RY, parent=R, attrs=REST_ATTRS,
@@ -361,7 +362,7 @@ M.node('Task_DoctorReview', 'userTask', 'Doctor review', 2960, 840, parent=R,
        ext=user_task('doctor-review-form', groups='doctors',
                      inputs=['patientName', 'careDay', 'riskLevel', 'riskReasons', 'painScore', 'temperature', 'nurseNotes', 'interventionId'],
                      outputs=['doctorDecision', 'doctorNotes']))
-M.boundary('Timer_DoctorReminder', 'Task_DoctorReview', 'Reminder', timer('=doctorReviewReminder'), interrupting=False)
+M.boundary('Timer_DoctorReminder', 'Task_DoctorReview', 'Reminder', timer('=doctorReviewReminder'), interrupting=False, label=(2966, 904))
 M.node('Task_RemindDoctor', 'serviceTask', 'Remind on-call doctor', 2960, 1000, parent=R,
        ext=worker('hh.remind-doctor', inputs=['patientId', 'interventionId', 'patientName']))
 M.node('End_Reminded', 'endEvent', 'Reminder sent', 2960, 1090, parent=R, label=(3000, 1080))
@@ -373,8 +374,8 @@ M.node('Task_CloseIntervention', 'serviceTask', 'Close intervention', 3390, RY, 
        ext=worker('hh.close-intervention', inputs=['interventionId', 'riskLevel', 'doctorDecision', 'doctorNotes']))
 M.node('End_Risk', 'endEvent', 'Intervention closed', 3520, RY, parent=R)
 M.boundary('Err_EmergencyDispatch', 'Sub_RiskIntervention', 'Emergency dispatch failed',
-           M.error('EMERGENCY_DISPATCH_FAILED', 'Emergency dispatch failed'), x=2700)
-M.boundary('Timer_InterventionTimeout', 'Sub_RiskIntervention', 'Intervention timed out', timer('=interventionTimeout'), x=3200)
+           M.error('EMERGENCY_DISPATCH_FAILED', 'Emergency dispatch failed'), x=2700, label=(2706, 1162))
+M.boundary('Timer_InterventionTimeout', 'Sub_RiskIntervention', 'Intervention timed out', timer('=interventionTimeout'), x=3200, label=(3206, 1162))
 M.node('Task_ManualEmergency', 'userTask', 'Coordinate emergency manually', 2700, 1240, parent=P,
        ext=user_task('manual-emergency-form', groups='coordinators',
                      inputs=['patientName', 'patientAddress', 'patientPhone', 'familyPhone', 'riskReasons', 'interventionId'],
@@ -402,7 +403,7 @@ FINAL_BODY = ('="Dear " + familyContactName + ",\\n\\nThe seven-day home-care pl
 M.node('Task_EmailFinal', 'serviceTask', 'E-mail family: final status', 4550, Y,
        ext=email('="Care plan complete for " + patientName', FINAL_BODY, '={finalNotificationSent: true}',
                  '=if is defined(error) then bpmnError("NOTIFICATION_FAILED", "E-mail failed: " + error.message) else null'))
-M.boundary('Err_EmailFinal', 'Task_EmailFinal', 'E-mail failed', '<bpmn:errorEventDefinition errorRef="Error_NOTIFICATION_FAILED" />')
+M.boundary('Err_EmailFinal', 'Task_EmailFinal', 'E-mail failed', '<bpmn:errorEventDefinition errorRef="Error_NOTIFICATION_FAILED" />', label=(4556, 462))
 M.node('Task_RecordFinalNotifyFailure', 'serviceTask', 'Record failed notification', 4550, 540,
        ext=worker('hh.record-notification-failure', inputs=['patientId', 'familyEmail', 'familyPhone', ('="FINAL_STATUS"', 'notificationCategory'),
                                                             ('="Final status e-mail failed"', 'notificationError')]))
@@ -415,21 +416,21 @@ M.node('End_Completed', 'endEvent', 'Seven-day plan completed', 4960, Y)
 f = M.flow
 f('Start_Discharged', 'Task_ValidateDischarge')
 f('Task_ValidateDischarge', 'Gw_DischargeValid')
-f('Gw_DischargeValid', 'Task_GenerateCarePlan', 'Valid', '=dischargeValid = true')
+f('Gw_DischargeValid', 'Task_GenerateCarePlan', 'Valid', '=dischargeValid = true', lbl=(386, 382, 32))
 f('Gw_DischargeValid', 'Task_CorrectDischarge', 'Invalid', '=dischargeValid = false', lbl=(366, 450))
 f('Task_CorrectDischarge', 'Task_ValidateDischarge', pts=[(300, 530), (220, 530), (220, 440)])
 f('Task_GenerateCarePlan', 'Task_FetchNurses')
 f('Task_FetchNurses', 'Gw_NursesFound')
-f('Gw_NursesFound', 'Task_DistanceMatrix', 'Yes', '=nurseCount > 0')
+f('Gw_NursesFound', 'Task_DistanceMatrix', 'Yes', '=nurseCount > 0', lbl=(806, 382, 30))
 f('Gw_NursesFound', 'Timer_NurseRetry', 'None, retry', '=nurseCount = 0 and nurseSearchAttempts < maxNurseSearchAttempts', lbl=(700, 330))
 f('Timer_NurseRetry', 'Task_FetchNurses', pts=[(762, 280), (640, 280), (640, 360)])
 f('Gw_NursesFound', 'Task_ManualNurse', 'None after retries', '=nurseCount = 0 and nurseSearchAttempts >= maxNurseSearchAttempts',
   pts=[(780, 425), (780, 760), (1240, 760), (1240, 710)], lbl=(800, 740))
 f('Task_DistanceMatrix', 'Task_MatchNurse')
 f('Err_DistanceApi', 'Task_FallbackDistance')
-f('Task_FallbackDistance', 'Task_MatchNurse', pts=[(980, 540), (1050, 540), (1050, 440)])
-f('Err_DistanceInvalid', 'Task_FallbackDistance', pts=[(1060, 342), (1060, 320), (840, 320), (840, 540), (860, 540)])
-f('Err_NoNurse', 'Task_ManualNurse', pts=[(1110, 458), (1110, 670), (1180, 670)])
+f('Task_FallbackDistance', 'Task_MatchNurse', pts=[(980, 525), (1040, 525), (1040, 440)])
+f('Err_DistanceInvalid', 'Task_FallbackDistance', pts=[(1080, 458), (1080, 555), (980, 555)])
+f('Err_NoNurse', 'Task_ManualNurse', pts=[(1120, 458), (1120, 670), (1180, 670)])
 f('Task_ManualNurse', 'Task_AssignNurse')
 f('Task_MatchNurse', 'Task_AssignNurse')
 f('Task_AssignNurse', 'Task_EmailAssignment')
@@ -454,16 +455,16 @@ f('Task_ScheduleVisit', 'Task_HealthAssessment')
 f('Task_HealthAssessment', 'Gw_VisitDone')
 f('Timer_VisitWindow', 'Task_MissedVisit')
 f('Task_MissedVisit', 'End_VisitMissed')
-f('Gw_VisitDone', 'Task_EvaluateRisk', 'Completed', '=visitStatus = "COMPLETED"')
+f('Gw_VisitDone', 'Task_EvaluateRisk', 'Done', '=visitStatus = "COMPLETED"', lbl=(2206, 622, 30))
 f('Gw_VisitDone', 'Task_IncompleteVisit', 'Incomplete', '=visitStatus = "INCOMPLETE"', lbl=(2186, 700))
 f('Task_IncompleteVisit', 'End_VisitIncomplete')
 f('Task_EvaluateRisk', 'Gw_Risk')
 f('Gw_Risk', 'End_VisitNormal', 'NORMAL', '=riskLevel = "NORMAL"', pts=[(2440, 615), (2440, 550), (2542, 550)], lbl=(2450, 560))
-f('Gw_Risk', 'Sub_RiskIntervention', 'ELEVATED or CRITICAL', '=riskLevel = "ELEVATED" or riskLevel = "CRITICAL"',
-  pts=[(2465, 640), (2540, 640)], lbl=(2440, 612))
+f('Gw_Risk', 'Sub_RiskIntervention', 'At risk', '=riskLevel = "ELEVATED" or riskLevel = "CRITICAL"',
+  pts=[(2465, 640), (2540, 640)], lbl=(2470, 622, 60))
 f('Start_Risk', 'Task_OpenIntervention')
 f('Task_OpenIntervention', 'Gw_Severity')
-f('Gw_Severity', 'Task_DispatchEmergency', 'CRITICAL', '=riskLevel = "CRITICAL"')
+f('Gw_Severity', 'Task_DispatchEmergency', 'CRITICAL', '=riskLevel = "CRITICAL"', lbl=(2866, 662, 52))
 f('Gw_Severity', 'Task_DoctorReview', 'ELEVATED', '=riskLevel = "ELEVATED"', lbl=(2846, 780))
 f('Task_DispatchEmergency', 'Task_SmsCritical')
 f('Task_SmsCritical', 'Gw_RiskJoin')
@@ -504,7 +505,7 @@ C = Model('pharmacy-prescription-fulfillment', 'Pharmacy Prescription Fulfillmen
 CY = 200
 C.node('Start_Rx', 'startEvent', 'Prescription received', 100, CY)
 C.node('Task_VerifyRx', 'serviceTask', 'Verify prescription', 220, CY, ext=worker('rx.verify-prescription', inputs=['prescription']))
-C.node('Gw_RxValid', 'exclusiveGateway', 'Prescription valid?', 360, CY, label=(305, 160))
+C.node('Gw_RxValid', 'exclusiveGateway', 'Prescription valid?', 360, CY, label=(290, 152))
 C.node('Task_NotifyRejection', 'serviceTask', 'Notify prescribing doctor', 360, 330,
        ext=worker('rx.notify-rejection', inputs=['patientId', 'prescription', 'rxRejectionReason']))
 C.node('End_Rejected', 'endEvent', 'Prescription rejected', 500, 330)
@@ -517,14 +518,14 @@ C.node('Task_MarkUnavailable', 'serviceTask', 'Mark unavailable and alert coordi
 C.node('End_Unavailable', 'endEvent', 'Medicine unavailable', 900, 470)
 C.node('Gw_StockJoin', 'exclusiveGateway', '', 900, CY)
 C.node('Task_Dispatch', 'serviceTask', 'Dispense and book courier', 1030, CY, ext=worker('rx.dispatch-delivery', inputs=['prescription']))
-C.boundary('Err_Courier', 'Task_Dispatch', 'No courier', C.error('COURIER_UNAVAILABLE', 'Courier unavailable'))
+C.boundary('Err_Courier', 'Task_Dispatch', 'No courier', C.error('COURIER_UNAVAILABLE', 'Courier unavailable'), label=(1036, 262))
 C.node('Task_Reschedule', 'serviceTask', 'Reschedule delivery', 1030, 330, ext=worker('rx.reschedule-delivery', inputs=['patientId', 'prescription']))
 C.node('End_Delayed', 'endEvent', 'Delivery delayed', 1030, 440)
 C.messages['MedicationDelivered'] = '=deliveryRef'
 C.node('Task_AwaitDelivery', 'receiveTask', 'Await delivery confirmation', 1220, CY, attrs=' messageRef="Message_MedicationDelivered"',
        ext=io(inputs=['deliveryRef']))
-C.boundary('Timer_DeliveryReminder', 'Task_AwaitDelivery', 'Taking longer than expected', timer('=deliveryReminder'), x=1190, interrupting=False)
-C.boundary('Timer_DeliveryTimeout', 'Task_AwaitDelivery', 'Delivery deadline passed', timer('=deliveryTimeout'), side='T')
+C.boundary('Timer_DeliveryReminder', 'Task_AwaitDelivery', 'Taking longer than expected', timer('=deliveryReminder'), x=1190, interrupting=False, label=(1196, 268))
+C.boundary('Timer_DeliveryTimeout', 'Task_AwaitDelivery', 'Delivery deadline passed', timer('=deliveryTimeout'), side='T', label=(1228, 106))
 C.node('Task_SmsDelayed', 'serviceTask', 'SMS family: delivery delayed', 1220, 360, attrs=REST_ATTRS,
        ext=rest('POST', '{{secrets.SMS_GATEWAY_URL}}', auth=('bearer', '{{secrets.SMS_API_KEY}}'),
                 body='={to: familyPhone, category: "DELIVERY_DELAYED", message: "Delivery of " + prescription.medication + " (" + deliveryRef + '
@@ -544,7 +545,7 @@ C.node('End_Delivered', 'endEvent', 'Medicine delivered', 1670, CY)
 g = C.flow
 g('Start_Rx', 'Task_VerifyRx')
 g('Task_VerifyRx', 'Gw_RxValid')
-g('Gw_RxValid', 'Task_CheckStock', 'Valid', '=rxValid = true')
+g('Gw_RxValid', 'Task_CheckStock', 'Valid', '=rxValid = true', lbl=(386, 182, 32))
 g('Gw_RxValid', 'Task_NotifyRejection', 'Invalid', '=rxValid = false', lbl=(366, 250))
 g('Task_NotifyRejection', 'End_Rejected')
 g('Task_CheckStock', 'Gw_Stock')

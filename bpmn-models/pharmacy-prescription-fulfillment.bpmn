@@ -55,7 +55,7 @@
 <bpmndi:BPMNDiagram id="BPMNDiagram_1"><bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="pharmacy-prescription-fulfillment">
 <bpmndi:BPMNShape id="Start_Rx_di" bpmnElement="Start_Rx"><dc:Bounds x="82" y="182" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="45" y="222" width="110" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
 <bpmndi:BPMNShape id="Task_VerifyRx_di" bpmnElement="Task_VerifyRx"><dc:Bounds x="160" y="160" width="120" height="80" /></bpmndi:BPMNShape>
-<bpmndi:BPMNShape id="Gw_RxValid_di" bpmnElement="Gw_RxValid" isMarkerVisible="true"><dc:Bounds x="335" y="175" width="50" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="305" y="160" width="110" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="Gw_RxValid_di" bpmnElement="Gw_RxValid" isMarkerVisible="true"><dc:Bounds x="335" y="175" width="50" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="290" y="152" width="110" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
 <bpmndi:BPMNShape id="Task_NotifyRejection_di" bpmnElement="Task_NotifyRejection"><dc:Bounds x="300" y="290" width="120" height="80" /></bpmndi:BPMNShape>
 <bpmndi:BPMNShape id="End_Rejected_di" bpmnElement="End_Rejected"><dc:Bounds x="482" y="312" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="445" y="352" width="110" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
 <bpmndi:BPMNShape id="Task_CheckStock_di" bpmnElement="Task_CheckStock"><dc:Bounds x="420" y="160" width="120" height="80" /></bpmndi:BPMNShape>
@@ -66,12 +66,12 @@
 <bpmndi:BPMNShape id="End_Unavailable_di" bpmnElement="End_Unavailable"><dc:Bounds x="882" y="452" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="845" y="492" width="110" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
 <bpmndi:BPMNShape id="Gw_StockJoin_di" bpmnElement="Gw_StockJoin" isMarkerVisible="true"><dc:Bounds x="875" y="175" width="50" height="50" /></bpmndi:BPMNShape>
 <bpmndi:BPMNShape id="Task_Dispatch_di" bpmnElement="Task_Dispatch"><dc:Bounds x="970" y="160" width="120" height="80" /></bpmndi:BPMNShape>
-<bpmndi:BPMNShape id="Err_Courier_di" bpmnElement="Err_Courier"><dc:Bounds x="1012" y="222" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="975" y="262" width="110" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="Err_Courier_di" bpmnElement="Err_Courier"><dc:Bounds x="1012" y="222" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="1036" y="262" width="110" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
 <bpmndi:BPMNShape id="Task_Reschedule_di" bpmnElement="Task_Reschedule"><dc:Bounds x="970" y="290" width="120" height="80" /></bpmndi:BPMNShape>
 <bpmndi:BPMNShape id="End_Delayed_di" bpmnElement="End_Delayed"><dc:Bounds x="1012" y="422" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="975" y="462" width="110" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
 <bpmndi:BPMNShape id="Task_AwaitDelivery_di" bpmnElement="Task_AwaitDelivery"><dc:Bounds x="1160" y="160" width="120" height="80" /></bpmndi:BPMNShape>
-<bpmndi:BPMNShape id="Timer_DeliveryReminder_di" bpmnElement="Timer_DeliveryReminder"><dc:Bounds x="1172" y="222" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="1135" y="262" width="110" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
-<bpmndi:BPMNShape id="Timer_DeliveryTimeout_di" bpmnElement="Timer_DeliveryTimeout"><dc:Bounds x="1202" y="142" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="1165" y="182" width="110" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="Timer_DeliveryReminder_di" bpmnElement="Timer_DeliveryReminder"><dc:Bounds x="1172" y="222" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="1196" y="268" width="110" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="Timer_DeliveryTimeout_di" bpmnElement="Timer_DeliveryTimeout"><dc:Bounds x="1202" y="142" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="1228" y="106" width="110" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
 <bpmndi:BPMNShape id="Task_SmsDelayed_di" bpmnElement="Task_SmsDelayed"><dc:Bounds x="1160" y="320" width="120" height="80" /></bpmndi:BPMNShape>
 <bpmndi:BPMNShape id="End_DelayNotified_di" bpmnElement="End_DelayNotified"><dc:Bounds x="1342" y="342" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="1305" y="382" width="110" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
 <bpmndi:BPMNShape id="Task_MarkFailed_di" bpmnElement="Task_MarkFailed"><dc:Bounds x="1160" y="20" width="120" height="80" /></bpmndi:BPMNShape>
@@ -81,7 +81,7 @@
 <bpmndi:BPMNShape id="End_Delivered_di" bpmnElement="End_Delivered"><dc:Bounds x="1652" y="182" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="1615" y="222" width="110" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
 <bpmndi:BPMNEdge id="Flow_Start_Rx_Task_VerifyRx_di" bpmnElement="Flow_Start_Rx_Task_VerifyRx"><di:waypoint x="118" y="200" /><di:waypoint x="160" y="200" /></bpmndi:BPMNEdge>
 <bpmndi:BPMNEdge id="Flow_Task_VerifyRx_Gw_RxValid_di" bpmnElement="Flow_Task_VerifyRx_Gw_RxValid"><di:waypoint x="280" y="200" /><di:waypoint x="335" y="200" /></bpmndi:BPMNEdge>
-<bpmndi:BPMNEdge id="Flow_Gw_RxValid_Task_CheckStock_di" bpmnElement="Flow_Gw_RxValid_Task_CheckStock"><di:waypoint x="385" y="200" /><di:waypoint x="420" y="200" /><bpmndi:BPMNLabel><dc:Bounds x="362" y="182" width="90" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_Gw_RxValid_Task_CheckStock_di" bpmnElement="Flow_Gw_RxValid_Task_CheckStock"><di:waypoint x="385" y="200" /><di:waypoint x="420" y="200" /><bpmndi:BPMNLabel><dc:Bounds x="386" y="182" width="32" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
 <bpmndi:BPMNEdge id="Flow_Gw_RxValid_Task_NotifyRejection_di" bpmnElement="Flow_Gw_RxValid_Task_NotifyRejection"><di:waypoint x="360" y="225" /><di:waypoint x="360" y="290" /><bpmndi:BPMNLabel><dc:Bounds x="366" y="250" width="90" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
 <bpmndi:BPMNEdge id="Flow_Task_NotifyRejection_End_Rejected_di" bpmnElement="Flow_Task_NotifyRejection_End_Rejected"><di:waypoint x="420" y="330" /><di:waypoint x="482" y="330" /></bpmndi:BPMNEdge>
 <bpmndi:BPMNEdge id="Flow_Task_CheckStock_Gw_Stock_di" bpmnElement="Flow_Task_CheckStock_Gw_Stock"><di:waypoint x="540" y="200" /><di:waypoint x="595" y="200" /></bpmndi:BPMNEdge>
