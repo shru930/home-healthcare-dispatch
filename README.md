@@ -512,12 +512,40 @@ erDiagram
     PATIENT ||--o{ PRESCRIPTION : ""
     PRESCRIPTION ||--o{ MEDICATION_DELIVERY : ""
     PATIENT ||--o{ NOTIFICATION : ""
-    PATIENT { bigint id PK; varchar mrn UK; varchar status; double latitude; double longitude }
-    WORKFLOW_INSTANCE { bigint id PK; bigint process_instance_key UK; varchar status; varchar current_stage }
-    HOME_CARE_VISIT { bigint id PK; int day_number; varchar status }
-    HEALTH_ASSESSMENT { int pain_score; double temperature; boolean wound_discharge; varchar risk_level }
-    MEDICATION_DELIVERY { varchar delivery_ref UK; varchar status }
-    PHARMACY_STOCK { varchar pharmacy; boolean partner; varchar medication; int quantity }
+    PATIENT {
+        bigint id PK
+        varchar mrn UK
+        varchar status
+        double latitude
+        double longitude
+    }
+    WORKFLOW_INSTANCE {
+        bigint id PK
+        bigint process_instance_key UK
+        varchar status
+        varchar current_stage
+    }
+    HOME_CARE_VISIT {
+        bigint id PK
+        int day_number
+        varchar status
+    }
+    HEALTH_ASSESSMENT {
+        int pain_score
+        double temperature
+        boolean wound_discharge
+        varchar risk_level
+    }
+    MEDICATION_DELIVERY {
+        varchar delivery_ref UK
+        varchar status
+    }
+    PHARMACY_STOCK {
+        varchar pharmacy
+        boolean partner
+        varchar medication
+        int quantity
+    }
 ```
 
 `WORKFLOW_INSTANCE.process_instance_key` links every business record to its Camunda process instance. No secrets are stored in the database.
