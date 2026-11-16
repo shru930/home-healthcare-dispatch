@@ -1,6 +1,11 @@
 # Starts Camunda 8 Run with the connector secrets from ../.env exported as environment variables.
 # The connector runtime resolves {{secrets.NAME}} placeholders from its environment.
 param([string]$C8Run = "C:\Users\punee\Cambunda\c8run-8.8.32")
+if (Get-NetTCPConnection -LocalPort 26500 -State Listen -ErrorAction SilentlyContinue) {
+    Write-Host "Camunda 8 Run is already running on port 26500." -ForegroundColor Green
+    exit 0
+}
+
 $root = Split-Path -Parent $PSScriptRoot
 Get-Content (Join-Path $root ".env") | Where-Object { $_ -match '^[A-Z_]+=' } | ForEach-Object {
     $k, $v = $_ -split '=', 2
