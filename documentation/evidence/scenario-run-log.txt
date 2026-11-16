@@ -1,107 +1,7 @@
 TC01 Happy path: registration, nearest nurse, 7 sequential visits, parallel physio, pharmacy call activity, completion
    PASS  Patient registered and workflow started
-   PASS  Nearest nurse = Priya Natarajan (0.6 km, Velachery)
-   PASS  Distance from Google Distance Matrix connector (mock mode)
-   PASS  7 visits scheduled and completed
-   PASS  Sequential MI: never more than 1 assessment open
-   FAIL  Sequential MI: days completed in order 1..7
-   PASS  Parallel MI: both physio sessions open at the same time
-   PASS  Pharmacy call activity: one child instance per prescription
-   PASS  Prescriptions fulfilled and delivered
-   PASS  Delivery SMS sent for each prescription
-   PASS  Nurse-assignment e-mail sent (Email connector)
-   PASS  Final status e-mail sent
-   PASS  Plan outcome COMPLETED, process COMPLETED
-   => FAIL  key=2251799813848442  26s
-TC02 High pain score -> ELEVATED -> Readmission Risk Intervention -> doctor review with non-interrupting reminder timer
-   PASS  Day 1 classified ELEVATED (pain 7 >= 6)
-   PASS  Risk intervention sub-process ran
-   PASS  Non-interrupting reminder timer fired while review stayed open
-   PASS  Doctor review completed afterwards (task was not cancelled)
-   PASS  Intervention closed as RESOLVED_HOME_CARE
-   PASS  Process COMPLETED
-   => PASS  key=2251799813849561  40s
-TC03 Infection indicators (wound discharge + fever) -> CRITICAL -> urgent response + SMS critical alert
-   PASS  Day 2 classified CRITICAL (discharge + fever)
-   PASS  Urgent response dispatched
-   PASS  Critical SMS sent to family (REST connector)
-   PASS  Intervention RESOLVED_URGENT_RESPONSE
-   PASS  Process COMPLETED
-   => PASS  key=2251799813850689  27s
-TC04 Error boundary: urgent-response dispatch fails -> EMERGENCY_DISPATCH_FAILED caught on the sub-process -> manual coordination
-   PASS  Day 1 CRITICAL (pain 9 >= 8)
-   PASS  Error boundary event on the sub-process triggered
-   PASS  Coordinator handled it in the Tasklist
-   PASS  Intervention RESOLVED_MANUAL_AMBULANCE_ARRANGED
-   PASS  Process still COMPLETED
-   => PASS  key=2251799813851730  26s
-TC05 Interrupting timer boundaries: missed visits and missed physiotherapy -> plan COMPLETED_WITH_GAPS -> coordinator gap review
-   PASS  Visit timer fired twice (days 3 and 5 missed)
-   PASS  Physio appointment timer fired (session missed)
-   PASS  Plan COMPLETED_WITH_GAPS and gap review done
-   PASS  Process COMPLETED
-   => PASS  key=2251799813852773  38s
-TC06 External API failure: Distance Matrix OVER_QUERY_LIMIT -> DISTANCE_API_ERROR boundary -> straight-line fallback
-   PASS  HTTP 200 with status OVER_QUERY_LIMIT detected -> DISTANCE_API_ERROR boundary
-   PASS  Fallback ranking used
-   PASS  Nearest nurse still found (Joseph, SRM Potheri)
-   PASS  Process COMPLETED
-   => PASS  key=2251799813853794  26s
-TC15 External API failure: Distance Matrix HTTP 500 -> connector errorExpression -> DISTANCE_API_ERROR boundary on the REST task
-   PASS  Error boundary on the REST connector task triggered
-   PASS  Fallback ranking used
-   PASS  Process COMPLETED
-   => PASS  key=2251799813854823  26s
-TC07 No suitable nurse: every nurse beyond the travel limit -> NO_SUITABLE_NURSE -> manual assignment
-   PASS  Error boundary NO_SUITABLE_NURSE triggered
-   PASS  Coordinator assigned a nurse manually
-   PASS  Process COMPLETED
-   => PASS  key=2251799813855804  28s
-TC08 Nurse pool empty -> timer retry loop (3 attempts) -> manual assignment
-   PASS  Nurse search ran 3 times
-   PASS  Retry timer fired twice
-   PASS  Manual assignment after the retries
-   PASS  Process COMPLETED
-   => PASS  key=2251799813856802  38s
-TC09 Notification failure: SMTP down -> SMS fallback; SMS rejected too -> failure recorded, care continues
-   PASS  E-mail connector failed -> error boundary
-   PASS  SMS fallback failed -> error boundary
-   PASS  Failure recorded and coordinator alerted
-   PASS  Care plan continued and completed
-   => PASS  key=2251799813857894  26s
-TC10 Pharmacy: rejected (controlled, no approval), partner pharmacy, unavailable, delayed-delivery reminder
-   PASS  Three child instances (parallel multi-instance call activity)
-   PASS  Controlled drug without approval -> REJECTED, doctor alerted
-   PASS  Out of stock -> partner pharmacy -> DELIVERED
-   PASS  Not stocked anywhere -> UNAVAILABLE
-   PASS  Non-interrupting delivery reminder -> delay SMS
-   PASS  Call activity outputs collected in pharmacyResults
-   PASS  Process COMPLETED with gaps reviewed
-   => PASS  key=2251799813858889  29s
-TC11 Courier unavailable -> COURIER_UNAVAILABLE boundary in the child process -> delivery DELAYED
-   PASS  Courier error boundary triggered in the child process
-   PASS  Prescription DELAYED, returned to the parent via output mapping
-   PASS  Process COMPLETED with gaps
-   => PASS  key=2251799813860052  28s
-TC12 Invalid discharge (date 20 days old) -> coordinator corrects details -> validation passes
-   PASS  Validation failed first, correction task completed
-   PASS  Validation re-run passed (2 validations)
-   PASS  Process COMPLETED
-   => PASS  key=2251799813861041  31s
-TC13 Doctor decides READMIT -> hospital readmission arranged
-   PASS  Readmission arranged
-   PASS  Patient status READMISSION_ARRANGED
-   => PASS  key=2251799813862172  29s
-TC14 Interrupting timer on the Readmission Risk sub-process: no doctor decision in time -> clinical lead escalation
-   PASS  Sub-process timer fired and cancelled the open review
-   PASS  Escalated to the clinical lead
-   PASS  Process COMPLETED
-   => PASS  key=2251799813863234  32s
-14/15 scenarios passed
-TC01 Happy path: registration, nearest nurse, 7 sequential visits, parallel physio, pharmacy call activity, completion
-   PASS  Patient registered and workflow started
-   PASS  Nearest nurse = Priya Natarajan (0.6 km, Velachery)
-   PASS  Distance from Google Distance Matrix connector (mock mode)
+   FAIL  Nearest nurse = Priya Natarajan (0.6 km, Velachery)
+   FAIL  Distance from Google Distance Matrix connector (mock mode)
    PASS  7 visits scheduled and completed
    PASS  Sequential MI: never more than 1 assessment open
    PASS  Sequential MI (engine timestamps): each day starts only after the previous day ended
@@ -112,5 +12,89 @@ TC01 Happy path: registration, nearest nurse, 7 sequential visits, parallel phys
    PASS  Nurse-assignment e-mail sent (Email connector)
    PASS  Final status e-mail sent
    PASS  Plan outcome COMPLETED, process COMPLETED
-   => PASS  key=2251799813864477  29s
-15/15 scenarios passed
+   => FAIL  key=2251799814099089  36s
+TC02 High pain score -> ELEVATED -> Readmission Risk Intervention -> doctor review with non-interrupting reminder timer
+   PASS  Day 1 classified ELEVATED (pain 7 >= 6)
+   PASS  Risk intervention sub-process ran
+   PASS  Non-interrupting reminder timer fired while review stayed open
+   PASS  Doctor review completed afterwards (task was not cancelled)
+   PASS  Intervention closed as RESOLVED_HOME_CARE
+   PASS  Process COMPLETED
+   => PASS  key=2251799814100262  50s
+TC03 Infection indicators (wound discharge + fever) -> CRITICAL -> urgent response + SMS critical alert
+   PASS  Day 2 classified CRITICAL (discharge + fever)
+   PASS  Urgent response dispatched
+   PASS  Critical SMS sent to family (REST connector)
+   PASS  Intervention RESOLVED_URGENT_RESPONSE
+   PASS  Process COMPLETED
+   => PASS  key=2251799814101447  32s
+TC04 Error boundary: urgent-response dispatch fails -> EMERGENCY_DISPATCH_FAILED caught on the sub-process -> manual coordination
+   PASS  Day 1 CRITICAL (pain 9 >= 8)
+   PASS  Error boundary event on the sub-process triggered
+   PASS  Coordinator handled it in the Tasklist
+   PASS  Intervention RESOLVED_MANUAL_AMBULANCE_ARRANGED
+   PASS  Process still COMPLETED
+   => PASS  key=2251799814102537  34s
+TC05 Interrupting timer boundaries: missed visits and missed physiotherapy -> plan COMPLETED_WITH_GAPS -> coordinator gap review
+   PASS  Visit timer fired twice (days 3 and 5 missed)
+   PASS  Physio appointment timer fired (session missed)
+   PASS  Plan COMPLETED_WITH_GAPS and gap review done
+   PASS  Process COMPLETED
+   => PASS  key=2251799814103632  37s
+TC06 External API failure: Distance Matrix OVER_QUERY_LIMIT -> DISTANCE_API_ERROR boundary -> straight-line fallback
+   PASS  HTTP 200 with status OVER_QUERY_LIMIT detected -> DISTANCE_API_ERROR boundary
+   PASS  Fallback ranking used
+   PASS  Nearest nurse still found (Joseph, SRM Potheri)
+   PASS  Process COMPLETED
+   => PASS  key=2251799814104660  30s
+TC15 External API failure: Distance Matrix HTTP 500 -> connector errorExpression -> DISTANCE_API_ERROR boundary on the REST task
+   PASS  Error boundary on the REST connector task triggered
+   FAIL  Fallback ranking used
+   PASS  Process COMPLETED
+   => FAIL  key=2251799814105689  26s
+TC07 No suitable nurse: every nurse beyond the travel limit -> NO_SUITABLE_NURSE -> manual assignment
+   PASS  Error boundary NO_SUITABLE_NURSE triggered
+   PASS  Coordinator assigned a nurse manually
+   PASS  Process COMPLETED
+   => PASS  key=2251799814106713  29s
+TC08 Nurse pool empty -> timer retry loop (3 attempts) -> manual assignment
+   PASS  Nurse search ran 3 times
+   PASS  Retry timer fired twice
+   PASS  Manual assignment after the retries
+   PASS  Process COMPLETED
+   => PASS  key=2251799814107734  39s
+TC09 Notification failure: SMTP down -> SMS fallback; SMS rejected too -> failure recorded, care continues
+   PASS  E-mail connector failed -> error boundary
+   PASS  SMS fallback failed -> error boundary
+   PASS  Failure recorded and coordinator alerted
+   PASS  Care plan continued and completed
+   => PASS  key=2251799814108778  31s
+TC10 Pharmacy: rejected (controlled, no approval), partner pharmacy, unavailable, delayed-delivery reminder
+   PASS  Three child instances (parallel multi-instance call activity)
+   PASS  Controlled drug without approval -> REJECTED, doctor alerted
+   PASS  Out of stock -> partner pharmacy -> DELIVERED
+   PASS  Not stocked anywhere -> UNAVAILABLE
+   PASS  Non-interrupting delivery reminder -> delay SMS
+   PASS  Call activity outputs collected in pharmacyResults
+   PASS  Process COMPLETED with gaps reviewed
+   => PASS  key=2251799814109824  32s
+TC11 Courier unavailable -> COURIER_UNAVAILABLE boundary in the child process -> delivery DELAYED
+   PASS  Courier error boundary triggered in the child process
+   PASS  Prescription DELAYED, returned to the parent via output mapping
+   PASS  Process COMPLETED with gaps
+   => PASS  key=2251799814111027  30s
+TC12 Invalid discharge (date 20 days old) -> coordinator corrects details -> validation passes
+   PASS  Validation failed first, correction task completed
+   PASS  Validation re-run passed (2 validations)
+   PASS  Process COMPLETED
+   => PASS  key=2251799814112033  33s
+TC13 Doctor decides READMIT -> hospital readmission arranged
+   PASS  Readmission arranged
+   PASS  Patient status READMISSION_ARRANGED
+   => PASS  key=2251799814113093  35s
+TC14 Interrupting timer on the Readmission Risk sub-process: no doctor decision in time -> clinical lead escalation
+   PASS  Sub-process timer fired and cancelled the open review
+   PASS  Escalated to the clinical lead
+   PASS  Process COMPLETED
+   => PASS  key=2251799814114196  35s
+13/15 scenarios passed

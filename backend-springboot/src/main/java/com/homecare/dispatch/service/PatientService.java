@@ -67,7 +67,21 @@ public class PatientService {
         Patient p = tx.execute(status -> saveDischarge(id, d)); // committed before the process starts
         List<Prescription> rx = prescriptions.findByPatientIdOrderByIdAsc(p.getId()).stream()
                 .filter(x -> x.getCarePlan() == null && "PRESCRIBED".equals(x.getStatus())).toList();
-        return workflows.start(p, d, rx);
+        try {
+            return workflows.start(p, d, rx);
+        } catch (ApiException e) {
+            // Engine unavailable: undo the discharge so the coordinator can simply retry later.
+            tx.executeWithoutResult(status -> {
+                Patient back = get(id);
+                back.setStatus("REGISTERED");
+                back.setUpdatedAt(LocalDateTime.now());
+                rx.forEach(x -> prescriptions.findById(x.getId()).ifPresent(r -> {
+                    r.setStatus("CANCELLED");
+                    r.setStatusReason("Workflow could not be started");
+                }));
+            });
+            throw e;
+        }
     }
 
     private Patient saveDischarge(Long id, DischargeRequest d) {

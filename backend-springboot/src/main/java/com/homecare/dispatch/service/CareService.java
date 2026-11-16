@@ -258,6 +258,23 @@ public class CareService {
         return new PlanCheck(outcome, gaps, summary);
     }
 
+    /** The process instance was cancelled in Camunda (e.g. in Operate): close the plan and free the nurse. */
+    @Transactional
+    public void cancelPlan(Long workflowId) {
+        plans.findByWorkflowInstanceId(workflowId).ifPresent(plan -> {
+            if ("CLOSED".equals(plan.getStatus()) || "CANCELLED".equals(plan.getStatus())) return;
+            plan.setStatus("CANCELLED");
+            releaseNurses(plan.getId());
+        });
+        workflows.findById(workflowId).ifPresent(w -> {
+            Patient p = w.getPatient();
+            if ("IN_CARE".equals(p.getStatus())) {
+                p.setStatus("DISCHARGED_NO_PLAN");
+                p.setUpdatedAt(LocalDateTime.now());
+            }
+        });
+    }
+
     @Transactional
     public void closePlan(Long carePlanId) {
         plans.findById(carePlanId).ifPresent(plan -> {

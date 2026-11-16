@@ -134,6 +134,40 @@ public class WorkflowService {
         });
     }
 
+    private final org.springframework.beans.factory.ObjectProvider<CareService> care;
+
+    /**
+     * Keeps the database in step with the engine: an instance cancelled in Operate releases its nurse
+     * and is marked CANCELLED, so cancelled cases never block nurse capacity.
+     */
+    @org.springframework.scheduling.annotation.Scheduled(fixedDelay = 30000, initialDelay = 20000)
+    public void syncWithEngine() {
+        for (WorkflowInstance w : workflows.findAll()) {
+            if (!"ACTIVE".equals(w.getStatus()) || w.getProcessInstanceKey() == null) continue;
+            try {
+                Map<String, Object> pi = query.processInstance(w.getProcessInstanceKey());
+                if (pi != null && ("TERMINATED".equals(pi.get("state")) || "CANCELED".equals(pi.get("state")))) {
+                    care.getObject().cancelPlan(w.getId());
+                    markCancelled(w.getId());
+                    log.info("Workflow {} was cancelled in Camunda; plan closed and nurse released", w.getId());
+                }
+            } catch (Exception e) {
+                log.debug("Engine sync skipped: {}", e.getMessage());
+                return; // engine unreachable: try again next round
+            }
+        }
+    }
+
+    @Transactional
+    public void markCancelled(Long workflowId) {
+        workflows.findById(workflowId).ifPresent(w -> {
+            w.setStatus("CANCELLED");
+            w.setCurrentStage("Cancelled in Camunda");
+            w.setEndedAt(LocalDateTime.now());
+            workflows.save(w); // called from the scheduler inside this bean, so save explicitly
+        });
+    }
+
     @Transactional(readOnly = true)
     public List<Map<String, Object>> list() {
         return workflows.findAllByOrderByStartedAtDesc().stream().map(w -> {

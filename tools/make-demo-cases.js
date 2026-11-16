@@ -14,7 +14,7 @@ async function start(first, last, lat, lng, mrn) {
     physioSessions: [{ dayNumber: 2, focus: 'Bed mobility' }, { dayNumber: 4, focus: 'Walking with frame' }, { dayNumber: 6, focus: 'Stairs' }],
     prescriptions: [{ medication: 'Paracetamol 500mg', dosage: '1 tablet every 8 hours', quantity: 21, controlled: false, doctorApproved: true },
                     { medication: 'Enoxaparin 40mg', dosage: '1 injection daily', quantity: 7, controlled: false, doctorApproved: true }],
-    timerOverrides: { interventionTimeout: 'PT12H', doctorReviewReminder: 'PT12H', visitWindow: 'PT12H', deliveryTimeout: 'PT12H' } });
+    timerOverrides: { interventionTimeout: 'PT48H', doctorReviewReminder: 'PT48H', visitWindow: 'PT48H', physioWindow: 'PT48H', deliveryReminder: 'PT48H', deliveryTimeout: 'PT48H' } });
   return String(w.processInstanceKey);
 }
 const doneTasks = new Set();

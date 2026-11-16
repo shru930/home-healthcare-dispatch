@@ -1,0 +1,9 @@
+main-home-healthcare.bpmn: 0 errors, 7 warnings
+   [warn] fake-join: Task_ValidateDischarge Incoming flows do not join
+   [warn] fake-join: Task_FetchNurses Incoming flows do not join
+   [warn] fake-join: Task_FallbackDistance Incoming flows do not join
+   [warn] fake-join: Task_MatchNurse Incoming flows do not join
+   [warn] fake-join: Task_ManualNurse Incoming flows do not join
+   [warn] fake-join: Task_AssignNurse Incoming flows do not join
+   [warn] fake-join: Task_CloseIntervention Incoming flows do not join
+pharmacy-prescription-fulfillment.bpmn: 0 errors, 0 warnings

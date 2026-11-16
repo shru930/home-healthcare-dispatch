@@ -734,6 +734,7 @@ All three child instances ran **in parallel** from one multi-instance call activ
 | Backend persistence (Flyway migrations + JPA mapping + queries) | `@DataJpaTest`, H2 in PostgreSQL mode | 2 | ✅ pass |
 | Frontend (array builder, task forms, badges, API client, discharge form) | Vitest + Testing Library | 50 | ✅ pass |
 | **End-to-end** against Camunda 8.8 + PostgreSQL + connectors | [`tools/run-scenarios.js`](tools/run-scenarios.js) | 15 scenarios, 69 assertions | ✅ 15/15 |
+| BPMN lint (bpmnlint recommended + Camunda 8.8 compatibility rules) | [`tools/lint-bpmn.js`](tools/lint-bpmn.js) | 2 models | ✅ 0 errors ([result](documentation/evidence/bpmn-lint-results.txt)) |
 | Production builds | `mvnw package`, `vite build` | | ✅ |
 
 ### 13.2 End-to-end scenarios (mapped to the 18 required test areas)
@@ -767,6 +768,8 @@ node tools/run-scenarios.js                 # 15 end-to-end scenarios (stack mus
 | An input mapping made a worker's output stay local (`physioSessions`, `nurseSearchAttempts`) | Physiotherapy sessions without dates; the retry counter would never increase | Added explicit output mappings (§8.1 rule 4) |
 | Google errors arrive as HTTP 200 | OVER_QUERY_LIMIT was not caught by the HTTP error expression | Added worker-side validation and a second boundary `Err_DistanceInvalid` |
 | A just-created task is visible before its variables are indexed | 404 from the task-variables search | The API returns `contextLoading`; the UI and test runner retry |
+| Instances cancelled in Operate kept their nurse booked | After many cancelled test cases every nearby nurse looked "full", so dispatch fell back to manual assignment | `WorkflowService.syncWithEngine()` checks Camunda every 30 s: cancelled instances close their plan and release the nurse |
+| A failed workflow start left the patient "in care" | Patient stuck without a plan when the engine was unavailable | The discharge is rolled back (patient back to REGISTERED) so it can simply be retried |
 
 ---
 
