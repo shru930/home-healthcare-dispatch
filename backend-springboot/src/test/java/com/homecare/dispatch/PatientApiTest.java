@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
@@ -29,10 +30,12 @@ import org.springframework.test.web.servlet.MockMvc;
 
 /** REST layer: request validation, status codes and the uniform error body. */
 @WebMvcTest(ApiControllers.PatientController.class)
+@AutoConfigureMockMvc(addFilters = false) // login is tested separately; this test focuses on validation
 @ActiveProfiles("test")
 class PatientApiTest {
     @Autowired MockMvc mvc;
     @MockitoBean PatientService patients;
+    @MockitoBean com.homecare.dispatch.security.AuthService auth; // the login filter is disabled for this test
 
     static final String VALID = """
             {"mrn":"MRN-1","firstName":"Lakshmi","lastName":"Iyer","dateOfBirth":"1958-04-12","phone":"9876500001",

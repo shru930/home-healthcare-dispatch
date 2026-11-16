@@ -9,3 +9,6 @@ dist/
 camunda/connector-secrets.local.txt
 documentation/~$*
 logs/
+
+# Team-only study material (kept local, not published)
+documentation/*Guide*

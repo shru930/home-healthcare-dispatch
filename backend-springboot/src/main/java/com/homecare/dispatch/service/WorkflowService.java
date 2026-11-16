@@ -52,6 +52,7 @@ public class WorkflowService {
 
         Map<String, Object> v = new LinkedHashMap<>();
         v.put("workflowId", wf.getId());
+        v.put("requestedBy", com.homecare.dispatch.security.CurrentUser.get().map(u -> u.displayName()).orElse("system"));
         v.put("patientId", p.getId());
         v.put("patientMrn", p.getMrn());
         v.put("patientName", p.fullName());
@@ -105,7 +106,7 @@ public class WorkflowService {
                     .variables(v).send().join();
             wf.setProcessInstanceKey(ev.getProcessInstanceKey());
             wf.setStatus("ACTIVE");
-            wf.setCurrentStage("Validating discharge details");
+            wf.setCurrentStage("Waiting for admin approval");
             workflows.save(wf);
             log.info("Started {} instance {} for patient {}", props.processes().mainProcessId(), ev.getProcessInstanceKey(), p.getMrn());
             return new WorkflowStartResponse(wf.getId(), ev.getProcessInstanceKey(), p.getId(), wf.getStatus(), wf.getCurrentStage());

@@ -63,6 +63,16 @@ homecare:
     api-key: ${SMS_API_KEY:}
   google:
     api-key: ${GOOGLE_MAPS_API_KEY:}
+  # Two login roles. Passwords come from the environment (.env), never from source code.
+  users:
+    - username: admin
+      password: ${APP_ADMIN_PASSWORD:}
+      display-name: Care Coordinator (Admin)
+      role: ADMIN
+    - username: user
+      password: ${APP_USER_PASSWORD:}
+      display-name: Ward Staff (User)
+      role: USER
 
 management:
   endpoints:

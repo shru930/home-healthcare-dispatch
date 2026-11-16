@@ -118,6 +118,23 @@ class Model:
         self.nodes[src]['out'].append(fid)
         self.nodes[tgt]['inc'].append(fid)
 
+    def shift(self, x0, dx, exclude=()):
+        """Moves everything right of x0 by dx (used to make room for new elements)."""
+        for n in self.nodes.values():
+            if n['id'] in exclude:
+                continue
+            if n['cx'] >= x0:
+                n['cx'] += dx
+                if n['label'] and n['label'][0] >= x0:
+                    n['label'] = (n['label'][0] + dx, n['label'][1])
+        for f in self.flows:
+            if f['src'] in exclude:
+                continue
+            if f['pts']:
+                f['pts'] = [(x + dx if x >= x0 else x, y) for x, y in f['pts']]
+            if f['lbl'] and f['lbl'][0] >= x0:
+                f['lbl'] = (f['lbl'][0] + dx,) + tuple(f['lbl'][1:])
+
     # ------------------------------------------------------------------ geometry
     def side(self, n, s):
         x, y, w, h = n['cx'], n['cy'], n['w'], n['h']
@@ -227,6 +244,15 @@ M.node('Task_CorrectDischarge', 'userTask', 'Correct discharge details', 360, 53
        ext=user_task('correct-discharge-form', groups='coordinators',
                      inputs=['patientName', 'validationErrors', 'patientPhone', 'familyPhone', 'familyEmail', 'dischargeDate'],
                      outputs=['patientPhone', 'familyPhone', 'familyEmail', 'dischargeDate']))
+M.node('Task_ApprovePlan', 'userTask', 'Approve home-care plan', 500, Y,
+       ext=user_task('approve-plan-form', groups='admins',
+                     inputs=['patientName', 'patientMrn', 'patientAddress', 'surgeryType', 'dischargeDate', 'hospital', 'doctorName',
+                             'familyContactName', 'familyPhone', 'prescriptions', 'physioSessions', 'requestedBy'],
+                     outputs=['approvalDecision', ('=approvalNotes', 'approvalNotes'), ('=approvedBy', 'approvedBy')]))
+M.node('Gw_Approved', 'exclusiveGateway', 'Approved?', 640, Y, label=(585, 352))
+M.node('Task_RejectPlan', 'serviceTask', 'Record rejection and inform requester', 640, 540,
+       ext=worker('hh.reject-plan', inputs=['workflowId', 'patientId', 'patientName', 'requestedBy', ('=approvalNotes', 'approvalNotes')]))
+M.node('End_PlanRejected', 'endEvent', 'Plan rejected', 780, 540)
 M.node('Task_GenerateCarePlan', 'serviceTask', 'Generate 7-day care plan', 480, Y,
        ext=worker('hh.generate-care-plan', inputs=['workflowId', 'dischargeDate', 'requiredSkill', 'physioSessions'],
                   outputs=['carePlanId', 'carePlanDays', 'physioSessions', 'careStartDate', 'careEndDate']))
@@ -234,7 +260,6 @@ M.node('Task_FetchNurses', 'serviceTask', 'Retrieve available nurses', 640, Y,
        ext=worker('hh.fetch-available-nurses', inputs=['workflowId', 'requiredSkill', ('=nurseSearchAttempts', 'nurseSearchAttempts')],
                   outputs=['candidateNurses', 'nurseCount', 'nurseSearchAttempts', 'nurseDestinations']))
 M.node('Gw_NursesFound', 'exclusiveGateway', 'Nurses found?', 780, Y, label=(788, 446))
-M.node('Timer_NurseRetry', 'intermediateCatchEvent', 'Wait before retry', 780, 280, body=timer('=nurseRetryWait'), label=(800, 255))
 M.node('Task_DistanceMatrix', 'serviceTask', 'Get travel times (Google Distance Matrix)', 920, Y, attrs=REST_ATTRS,
        ext=rest('GET', '{{secrets.DISTANCE_MATRIX_URL}}',
                 query='={origins: patientLocation, destinations: nurseDestinations, key: "{{secrets.GOOGLE_MAPS_API_KEY}}", mode: "driving"}',
@@ -267,18 +292,10 @@ M.node('Task_EmailAssignment', 'serviceTask', 'E-mail family: nurse assigned', 1
        ext=email('="Home-care nurse assigned for " + patientName', ASSIGN_BODY, '={familyNotified: true}',
                  '=if is defined(error) then bpmnError("NOTIFICATION_FAILED", "E-mail failed: " + error.message) else null'))
 M.boundary('Err_EmailAssign', 'Task_EmailAssignment', 'E-mail failed', M.error('NOTIFICATION_FAILED', 'Notification failed'), label=(1406, 462))
-M.node('Task_SmsAssignment', 'serviceTask', 'SMS family (fallback)', 1400, 540, attrs=REST_ATTRS,
-       ext=rest('POST', '{{secrets.SMS_GATEWAY_URL}}', auth=('bearer', '{{secrets.SMS_API_KEY}}'),
-                body='={to: familyPhone, category: "NURSE_ASSIGNMENT", message: "Nurse " + assignedNurse.fullName + " will visit " + '
-                     'patientName + " daily from " + careStartDate + ". City Home Care"}',
-                result='={familyNotified: true, smsSid: response.body.sid}',
-                error='=if is defined(error) then bpmnError("NOTIFICATION_FAILED", "SMS failed: " + error.message) else null'))
-M.boundary('Err_SmsAssign', 'Task_SmsAssignment', 'SMS failed', '<bpmn:errorEventDefinition errorRef="Error_NOTIFICATION_FAILED" />', label=(1406, 602))
-M.node('Task_RecordNotifyFailure', 'serviceTask', 'Record failed notification', 1400, 670,
+M.node('Task_RecordNotifyFailure', 'serviceTask', 'Record failed notification', 1400, 540,
        ext=worker('hh.record-notification-failure', inputs=['patientId', 'familyEmail', 'familyPhone',
                                                              ('="NURSE_ASSIGNMENT"', 'notificationCategory'),
-                                                             ('="E-mail and SMS fallback both failed"', 'notificationError')]))
-M.node('Gw_NotifyJoin2', 'exclusiveGateway', '', 1540, 540)
+                                                             ('="Nurse-assignment e-mail could not be delivered"', 'notificationError')]))
 M.node('Gw_NotifyJoin', 'exclusiveGateway', '', 1540, Y)
 M.node('Gw_Fork', 'parallelGateway', 'Start care tracks', 1640, Y, label=(1585, 430))
 
@@ -416,15 +433,17 @@ M.node('End_Completed', 'endEvent', 'Seven-day plan completed', 4960, Y)
 f = M.flow
 f('Start_Discharged', 'Task_ValidateDischarge')
 f('Task_ValidateDischarge', 'Gw_DischargeValid')
-f('Gw_DischargeValid', 'Task_GenerateCarePlan', 'Valid', '=dischargeValid = true', lbl=(386, 382, 32))
+f('Gw_DischargeValid', 'Task_ApprovePlan', 'Valid', '=dischargeValid = true', lbl=(386, 382, 32))
+f('Task_ApprovePlan', 'Gw_Approved')
+f('Gw_Approved', 'Task_GenerateCarePlan', 'Yes', '=approvalDecision = "APPROVED"', lbl=(668, 382, 30))
+f('Gw_Approved', 'Task_RejectPlan', 'No', '=approvalDecision = "REJECTED"', lbl=(646, 455))
+f('Task_RejectPlan', 'End_PlanRejected')
 f('Gw_DischargeValid', 'Task_CorrectDischarge', 'Invalid', '=dischargeValid = false', lbl=(366, 450))
 f('Task_CorrectDischarge', 'Task_ValidateDischarge', pts=[(300, 530), (220, 530), (220, 440)])
 f('Task_GenerateCarePlan', 'Task_FetchNurses')
 f('Task_FetchNurses', 'Gw_NursesFound')
 f('Gw_NursesFound', 'Task_DistanceMatrix', 'Yes', '=nurseCount > 0', lbl=(806, 382, 30))
-f('Gw_NursesFound', 'Timer_NurseRetry', 'None, retry', '=nurseCount = 0 and nurseSearchAttempts < maxNurseSearchAttempts', lbl=(700, 330))
-f('Timer_NurseRetry', 'Task_FetchNurses', pts=[(762, 280), (640, 280), (640, 360)])
-f('Gw_NursesFound', 'Task_ManualNurse', 'None after retries', '=nurseCount = 0 and nurseSearchAttempts >= maxNurseSearchAttempts',
+f('Gw_NursesFound', 'Task_ManualNurse', 'None available', '=nurseCount = 0',
   pts=[(780, 425), (780, 760), (1240, 760), (1240, 710)], lbl=(800, 740))
 f('Task_DistanceMatrix', 'Task_MatchNurse')
 f('Err_DistanceApi', 'Task_FallbackDistance')
@@ -435,11 +454,8 @@ f('Task_ManualNurse', 'Task_AssignNurse')
 f('Task_MatchNurse', 'Task_AssignNurse')
 f('Task_AssignNurse', 'Task_EmailAssignment')
 f('Task_EmailAssignment', 'Gw_NotifyJoin')
-f('Err_EmailAssign', 'Task_SmsAssignment')
-f('Task_SmsAssignment', 'Gw_NotifyJoin2')
-f('Err_SmsAssign', 'Task_RecordNotifyFailure')
-f('Task_RecordNotifyFailure', 'Gw_NotifyJoin2', pts=[(1460, 670), (1540, 670), (1540, 565)])
-f('Gw_NotifyJoin2', 'Gw_NotifyJoin')
+f('Err_EmailAssign', 'Task_RecordNotifyFailure')
+f('Task_RecordNotifyFailure', 'Gw_NotifyJoin', pts=[(1460, 540), (1540, 540), (1540, 425)])
 f('Gw_NotifyJoin', 'Gw_Fork')
 f('Gw_Fork', 'Sub_Physio', pts=[(1640, 375), (1640, 200), (1720, 200)])
 f('Gw_Fork', 'Call_Pharmacy')
@@ -497,6 +513,8 @@ f('Err_EmailFinal', 'Task_RecordFinalNotifyFailure')
 f('Task_RecordFinalNotifyFailure', 'Gw_FinalJoin', pts=[(4610, 540), (4690, 540), (4690, 425)])
 f('Gw_FinalJoin', 'Task_ClosePlan')
 f('Task_ClosePlan', 'End_Completed')
+
+M.shift(420, 300, exclude={'Task_ApprovePlan', 'Gw_Approved', 'Task_RejectPlan', 'End_PlanRejected'})
 
 # ====================================================================================== CHILD PROCESS
 C = Model('pharmacy-prescription-fulfillment', 'Pharmacy Prescription Fulfillment',
@@ -583,6 +601,12 @@ sel = lambda key, label, opts: {'type': 'select', 'key': key, 'label': label, 'v
                                 'values': [{'label': l, 'value': v} for v, l in opts]}
 area = lambda key, label, req=False: {'type': 'textarea', 'key': key, 'label': label, 'validate': {'required': req}}
 FORMS = [
+    form('approve-plan-form', 'Approve home-care plan',
+         'A ward staff member submitted this discharge request. Check the details and approve or reject the seven-day plan.',
+         [ro('patientName', 'Patient'), ro('surgeryType', 'Surgery'), ro('dischargeDate', 'Discharge date'),
+          ro('requestedBy', 'Requested by'),
+          sel('approvalDecision', 'Decision', [('APPROVED', 'Approve the plan'), ('REJECTED', 'Reject the request')]),
+          area('approvalNotes', 'Notes (required when rejecting)')]),
     form('health-assessment-form', 'Home visit and health assessment',
          'Record today\'s visit. High pain or infection indicators start the Readmission Risk Intervention. '
          'This is workflow support, not a diagnosis.',

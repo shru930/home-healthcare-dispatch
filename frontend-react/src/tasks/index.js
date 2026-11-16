@@ -5,6 +5,7 @@ import ManualNurseForm from './ManualNurseForm.jsx';
 import CorrectDischargeForm from './CorrectDischargeForm.jsx';
 import ManualEmergencyForm from './ManualEmergencyForm.jsx';
 import GapReviewForm from './GapReviewForm.jsx';
+import ApprovePlanForm from './ApprovePlanForm.jsx';
 
 /** Task-specific form per BPMN user task elementId. */
 export const TASK_FORMS = {
@@ -15,4 +16,5 @@ export const TASK_FORMS = {
   Task_CorrectDischarge: CorrectDischargeForm,
   Task_ManualEmergency: ManualEmergencyForm,
   Task_GapReview: GapReviewForm,
+  Task_ApprovePlan: ApprovePlanForm,
 };

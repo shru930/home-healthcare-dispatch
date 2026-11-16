@@ -6,7 +6,7 @@
 
 Camunda 8.8 (Zeebe) · Spring Boot 3.5 · React 18 · PostgreSQL 17 · Docker
 
-`2 executable BPMN processes` · `7 Camunda Forms` · `32 typed job workers` · `7 outbound connector tasks` · `23 + 50 unit tests` · `15 / 15 end-to-end scenarios passing`
+`2 executable BPMN processes` · `8 Camunda Forms` · `33 typed job workers` · `6 outbound connector tasks` · `2 logins (USER / ADMIN)` · `23 + 65 unit tests` · `17 / 17 end-to-end scenarios passing`
 
 </div>
 
@@ -18,6 +18,18 @@ Camunda 8.8 (Zeebe) · Spring Boot 3.5 · React 18 · PostgreSQL 17 · Docker
 > - The process-instance keys in the captions can be opened in Operate.
 
 > **Clinical disclaimer.** The readmission-risk flags are a *workflow-support* tool. They use configurable demonstration thresholds and are **not a clinical diagnosis**. A qualified clinician makes every clinical decision in a user task.
+
+## Logins
+
+| Role | Username | Password | What this person does |
+|---|---|---|---|
+| **USER**: Ward Staff | `user` | `user@123` | Registers patients, **submits discharge requests**, does the daily nurse assessments and physiotherapy recording, confirms deliveries |
+| **ADMIN**: Care Coordinator | `admin` | `admin@123` | **Approves or rejects** home-care plans, takes the decisions (doctor review, manual nurse, emergencies, gap review), nurse availability, demo controls |
+| Camunda Operate | `demo` | `demo` | Monitoring at http://localhost:8080/operate |
+
+*The user says, the admin approves.* A discharge request submitted by a USER waits at the BPMN user task **Approve home-care plan** (candidate group `admins`). Nothing is booked until an ADMIN approves it. The backend enforces the roles: a USER who tries to complete an admin task gets **HTTP 403**, and a call without a login gets **401**. These demo passwords are set in `.env` (`APP_ADMIN_PASSWORD`, `APP_USER_PASSWORD`).
+
+![Login](documentation/screenshots/00-login.png)
 
 ## Table of contents
 1. [Business problem](#1-business-problem)
@@ -65,7 +77,7 @@ Hospitals usually coordinate all of this by phone and spreadsheet. That causes f
 CareFlow automates the whole seven-day plan with **Camunda 8**:
 
 1. A coordinator registers the patient and records the discharge in the **React portal**. The discharge includes physiotherapy sessions and prescriptions, entered with dynamic array builders.
-2. The **main BPMN process** validates the data and generates the 7-day plan. It then picks the **nearest suitable nurse** using the **Google Distance Matrix REST connector**, and notifies the family through the **Email connector**, with an SMS fallback.
+2. The **main BPMN process** validates the data and waits for the **admin to approve** the plan. After approval it generates the 7-day plan, picks the **nearest suitable nurse** using the **Google Distance Matrix REST connector**, and notifies the family through the **Email connector**.
 3. Three care tracks run **in parallel**:
    - **Daily visits**: a *sequential* multi-instance over 7 days. On each day the nurse submits a health assessment in the **custom Tasklist**.
    - **Physiotherapy**: a *parallel* multi-instance.
@@ -81,7 +93,7 @@ Every step is visible live in the portal's **process tracker** and in **Camunda 
 
 | Criterion | Where it is implemented | Proof |
 |---|---|---|
-| **BPMN 2.0 executability (5)** | [`main-home-healthcare.bpmn`](bpmn-models/main-home-healthcare.bpmn), [`pharmacy-prescription-fulfillment.bpmn`](bpmn-models/pharmacy-prescription-fulfillment.bpmn); every gateway branch has a FEEL condition, with no dead ends | Deployed to Camunda 8.8 ([deployment log](documentation/evidence/deployment-log.txt)); 15/15 scenarios executed |
+| **BPMN 2.0 executability (5)** | [`main-home-healthcare.bpmn`](bpmn-models/main-home-healthcare.bpmn), [`pharmacy-prescription-fulfillment.bpmn`](bpmn-models/pharmacy-prescription-fulfillment.bpmn); every gateway branch has a FEEL condition, with no dead ends | Deployed to Camunda 8.8 ([deployment log](documentation/evidence/deployment-log.txt)); 17/17 scenarios executed; bpmnlint: 0 errors |
 | **Mandatory constructs (10)** | Sequential MI `Sub_DailyVisit`; parallel MI `Sub_Physio`; parallel MI **call activity** `Call_Pharmacy`; **sub-process** `Sub_RiskIntervention` with **error** and **timer** boundary events; 7 error boundaries, 5 timer boundaries, 1 intermediate timer, 1 message receive task | [§6](#6-mandatory-constructs-in-detail), [§12](#12-execution-evidence) |
 | **Connectors and FEEL (5)** | REST connector (Google Distance Matrix, SMS gateway), **Email connector** (SMTP); secrets via `{{secrets.*}}`; FEEL in conditions, mappings, result and error expressions | [§6.4](#64-outbound-connectors), [§8.4](#84-feel-expression-dictionary) |
 | **Data contract and scoping (5)** | Input/output mappings on every task; MI `inputElement`/`outputElement`/`outputCollection`; call activity with `propagateAllParentVariables="false"` and explicit mappings; local MI variables via `=null` input mappings | [§8](#8-data-contracts-variable-scoping-and-feel-dictionary) |
@@ -90,8 +102,8 @@ Every step is visible live in the portal's **process tracker** and in **Camunda 
 
 | Criterion | Where it is implemented | Proof |
 |---|---|---|
-| **Spring Boot and job workers (8)** | 10 REST controllers, JPA + **PostgreSQL**, **32 strongly typed `@JobWorker`s**, `ZeebeBpmnError` for 5 business errors | [§9](#9-spring-boot-backend), 23/23 JUnit tests |
-| **React portal (8)** | **Dynamic array builders** for the MI collections, **custom Tasklist inbox** with 7 task-specific forms, **live process tracker** | [§11](#11-react-portal), 50/50 Vitest tests |
+| **Spring Boot and job workers (8)** | 10 REST controllers, JPA + **PostgreSQL**, token login with USER/ADMIN roles, **33 strongly typed `@JobWorker`s**, `ZeebeBpmnError` for 5 business errors | [§9](#9-spring-boot-backend), 23/23 JUnit tests |
+| **React portal (8)** | **Dynamic array builders** for the MI collections, **custom Tasklist inbox** with 8 task-specific forms (USER: "My tasks", ADMIN: "Approvals & decisions"), **live process tracker** | [§11](#11-react-portal), 65/65 Vitest tests |
 | **Camunda 8 engine integration (5)** | React → REST → Spring Boot → Zeebe (CamundaClient commands) and the Camunda REST `/v2` task and search APIs; message correlation for deliveries | [§4](#4-system-architecture), [§12](#12-execution-evidence) |
 | **Docker packaging (4)** | Multi-stage backend and frontend Dockerfiles, root `docker-compose.yml` with PostgreSQL, health checks and an optional Camunda profile | [§15](#15-docker-deployment) |
 
@@ -107,7 +119,7 @@ flowchart LR
     subgraph Backend["Spring Boot 3.5 backend :8090"]
       API["REST controllers<br/>DTO + Bean Validation"]
       SVC["Services<br/>Patient · Workflow · Care · Pharmacy · Task · Notification"]
-      WRK["32 typed @JobWorker<br/>hh.* and rx.*"]
+      WRK["33 typed @JobWorker<br/>hh.* and rx.*"]
       MOCK["Demo providers<br/>Distance Matrix mock · SMS gateway mock · GreenMail SMTP"]
       REPO["Spring Data JPA repositories"]
     end
@@ -161,7 +173,7 @@ flowchart LR
 
 The process has four phases.
 
-#### Phase A: intake and nurse dispatch
+#### Phase A: request, admin approval and nurse dispatch
 
 | # | Element (ID) | Type | What happens | Implementation |
 |---|---|---|---|---|
@@ -169,16 +181,17 @@ The process has four phases.
 | 2 | Validate discharge details (`Task_ValidateDischarge`) | Service task | Checks phone numbers, family e-mail, location, the discharge date (no more than 14 days old) and at least one prescription | worker `hh.validate-discharge` |
 | 3 | Details valid? (`Gw_DischargeValid`) | Exclusive gateway | `=dischargeValid = true` → continue; `=dischargeValid = false` → correction | FEEL |
 | 4 | Correct discharge details (`Task_CorrectDischarge`) | **User task** (coordinators) | Coordinator fixes the data in the Tasklist, then the flow loops back to validation | form `correct-discharge-form` |
+| 4a | **Approve home-care plan** (`Task_ApprovePlan`) | **User task** (group `admins`, ADMIN login) | The admin sees the request (patient, surgery, prescriptions, physiotherapy, requested by) and approves or rejects it; outputs `approvalDecision`, `approvalNotes`, `approvedBy` | form `approve-plan-form` |
+| 4b | Approved? (`Gw_Approved`) | Exclusive gateway | `=approvalDecision = "APPROVED"` → continue; `=approvalDecision = "REJECTED"` → *Record rejection and inform requester* (`hh.reject-plan`) → *Plan rejected* | FEEL |
 | 5 | Generate 7-day care plan (`Task_GenerateCarePlan`) | Service task | Persists `HomeCarePlan`, builds `carePlanDays` (7 items) and numbers the `physioSessions` | worker `hh.generate-care-plan` |
 | 6 | Retrieve available nurses (`Task_FetchNurses`) | Service task | Nurses with the required skill and spare capacity → `candidateNurses`, `nurseDestinations` | worker `hh.fetch-available-nurses` |
-| 7 | Nurses found? (`Gw_NursesFound`) | Exclusive gateway | Found → distance; none and fewer than 3 attempts → **timer** `Timer_NurseRetry` (`=nurseRetryWait`) → retry; none after 3 attempts → manual | FEEL |
+| 7 | Nurses found? (`Gw_NursesFound`) | Exclusive gateway | `=nurseCount > 0` → get travel times; `=nurseCount = 0` → *Arrange nurse manually* (admin) | FEEL |
 | 8 | Get travel times (`Task_DistanceMatrix`) | **REST connector** | `GET {{secrets.DISTANCE_MATRIX_URL}}`, Google Distance Matrix format | `io.camunda:http-json:1` |
 | 9 | Rank nurses by straight-line distance (`Task_FallbackDistance`) | Service task | Fallback when the API fails (`Err_DistanceApi`) or returns an unusable body (`Err_DistanceInvalid`) | worker `hh.rank-nurses-fallback` |
 | 10 | Select nearest suitable nurse (`Task_MatchNurse`) | Service task | Shortest travel time within `maxTravelMinutes`. Throws `NO_SUITABLE_NURSE` or `DISTANCE_API_ERROR` | worker `hh.match-nurse` |
 | 11 | Arrange nurse manually (`Task_ManualNurse`) | **User task** (coordinators) | Coordinator selects a nurse; the output mapping sets `assignmentMode = "MANUAL"` | form `manual-nurse-form` |
 | 12 | Assign nurse (`Task_AssignNurse`) | Service task | Persists `NurseAssignment`, updates the nurse's load, returns `assignedNurse` | worker `hh.assign-nurse` |
 | 13 | E-mail family: nurse assigned (`Task_EmailAssignment`) | **Email connector** | SMTP e-mail with the nurse and the 7-day schedule. Failure → `NOTIFICATION_FAILED` | `io.camunda:email:1` |
-| 14 | SMS family (fallback) (`Task_SmsAssignment`) | **REST connector** | Bearer-authenticated SMS gateway | `io.camunda:http-json:1` |
 | 15 | Record failed notification (`Task_RecordNotifyFailure`) | Service task | Logs the failure and alerts the coordinator to phone the family. **Care continues.** | worker `hh.record-notification-failure` |
 
 #### Phase B: three parallel care tracks
@@ -303,12 +316,13 @@ Switching to the real providers is a **configuration change only** (§16). The B
 | # | Failure | Detected by | BPMN handling | Business result | Scenario |
 |---|---|---|---|---|---|
 | 1 | Invalid discharge data | `hh.validate-discharge` | Gateway → user task *Correct discharge details* → loop | Data corrected, process continues | TC12 |
-| 2 | No nurse available | `hh.fetch-available-nurses` | Gateway → **intermediate timer** retry ×3 → user task | Agency nurse assigned manually | TC08 |
+| 2 | No nurse available | `hh.fetch-available-nurses` | Gateway "None available" → admin user task | Agency nurse assigned manually | TC08 |
+| 2a | Admin rejects the request | Admin in the Tasklist | Gateway *Approved?* = No → record rejection | Case ends, requester informed | TC16 |
+| 2b | Wrong role tries to approve | Backend role check | HTTP 403, task stays open | Only admins approve | TC17 |
 | 3 | Distance Matrix HTTP failure (500, timeout) | REST connector `errorExpression` | **Error boundary** `Err_DistanceApi` → straight-line fallback | Nurse still matched | TC15 |
 | 4 | Distance Matrix logical failure (HTTP 200 with `OVER_QUERY_LIMIT`, `REQUEST_DENIED`, malformed body) | `hh.match-nurse` → `ZeebeBpmnError("DISTANCE_API_ERROR")` | **Error boundary** `Err_DistanceInvalid` → fallback | Nurse still matched | TC06 |
 | 5 | Nobody within the travel limit | `hh.match-nurse` → `ZeebeBpmnError("NO_SUITABLE_NURSE")` | **Error boundary** `Err_NoNurse` → manual assignment | Coordinator assigns | TC07 |
-| 6 | E-mail delivery failure | Email connector `errorExpression` | **Error boundary** → SMS fallback | Family still informed | TC09 |
-| 7 | SMS also fails | REST connector `errorExpression` | **Error boundary** → *Record failed notification* | Coordinator alerted to phone the family; care continues | TC09 |
+| 6 | E-mail delivery failure | Email connector `errorExpression` | **Error boundary** → record failure, alert coordinator | Coordinator phones the family; care continues | TC09 |
 | 8 | Missed nurse visit | — | **Timer boundary** (interrupting) `=visitWindow` | Visit MISSED, alert, next day continues | TC05 |
 | 9 | Incomplete visit | Nurse selects INCOMPLETE | Gateway → *Record incomplete visit* | Follow-up alert | (UI) |
 | 10 | Missed physiotherapy | — | **Timer boundary** `=physioWindow` | Session MISSED, re-book alert | TC05 |
@@ -351,7 +365,7 @@ Switching to the real providers is a **configuration change only** (§16). The B
     { "prescriptionId": 42, "medication": "Ondansetron 4mg",  "dosage": "1 tablet when nauseous",  "quantity": 6,  "controlled": false, "doctorApproved": true }
   ],
   "visitWindow": "PT10M", "physioWindow": "PT10M", "doctorReviewReminder": "PT2M", "interventionTimeout": "PT15M",
-  "deliveryReminder": "PT2M", "deliveryTimeout": "PT30M", "nurseRetryWait": "PT15S",
+  "deliveryReminder": "PT2M", "deliveryTimeout": "PT30M", "requestedBy": "Ward Staff (User)",
   "maxTravelMinutes": 60, "maxNurseSearchAttempts": 3
 }
 ```
@@ -415,7 +429,7 @@ Response `201 Created`:
 | Plan outcome | `=planOutcome = "COMPLETED"` · `=planOutcome = "COMPLETED_WITH_GAPS"` |
 | Child gateways | `=rxValid = true / false` · `=stockStatus = "IN_STOCK" / "OUT_OF_STOCK"` · `=partnerFound = true / false` |
 | User-task assignment | `=assignedNurse.username` · `=physiotherapist` · output mapping `="MANUAL"` → `assignmentMode` |
-| Timers | `=visitWindow` · `=physioWindow` · `=doctorReviewReminder` · `=interventionTimeout` · `=deliveryReminder` · `=deliveryTimeout` · `=nurseRetryWait` |
+| Timers | `=visitWindow` · `=physioWindow` · `=doctorReviewReminder` · `=interventionTimeout` · `=deliveryReminder` · `=deliveryTimeout` |
 | Message correlation | message `MedicationDelivered`, key `=deliveryRef` |
 | Connector query | `={origins: patientLocation, destinations: nurseDestinations, key: "{{secrets.GOOGLE_MAPS_API_KEY}}", mode: "driving"}` |
 | Connector result | `={distanceMatrix: response.body, distanceSource: "DISTANCE_MATRIX_API"}` · `={smsSid: response.body.sid}` |
@@ -566,7 +580,13 @@ The KPIs come from `GET /api/dashboard`: active patients, active care plans, ava
 
 The discharge form has two **dynamic array item builders**: *Physiotherapy sessions* (day + focus) and *Prescriptions* (medicine, dosage, quantity, controlled, doctor approved). Rows can be added and removed. These arrays become the multi-instance collections `physioSessions` and `prescriptions`. An optional "demo timers" section sets `timerOverrides`.
 
-### 11.3 Custom Tasklist inbox
+### 11.3 Custom Tasklist inbox (role-based)
+
+**ADMIN: Approvals & decisions.** The request submitted by the ward user waits here. The admin checks the patient, surgery, prescriptions and physiotherapy sessions, then clicks **Approve** or **Reject** (a reason is required to reject).
+
+![Admin approval](documentation/screenshots/09b-tasklist-approve-plan.png)
+
+**USER: My tasks.** Nurse assessments and physiotherapy sessions.
 ![Tasklist inbox](documentation/screenshots/09-tasklist-inbox.png)
 
 The inbox lists Camunda user tasks (`GET /api/tasks`, backed by the Camunda `/v2/user-tasks/search` API). It can be filtered by role or user (coordinator, doctor, physiotherapists, each nurse) and refreshes every 5 seconds. Users can claim and complete tasks.
@@ -674,16 +694,16 @@ Both routes lead to the straight-line fallback, so a nurse is still found.
 
 ![Operate TC06](documentation/screenshots/24-operate-distance-api-fallback.png)
 
-### 12.7 Nurse unavailable (TC07: nobody within the travel limit; TC08: empty pool)
+### 12.7 Nurse unavailable (TC07: nobody within the travel limit; TC08: no nurse free)
 
-| TC07: `NO_SUITABLE_NURSE` → manual assignment | TC08: retry timer ×2, 3 searches → manual assignment |
+| TC07: `NO_SUITABLE_NURSE` → manual assignment | TC08: *Nurses found?* = None available → manual assignment |
 |---|---|
 | ![](documentation/diagrams/exec-tc07-no-suitable-nurse.png) | ![](documentation/diagrams/exec-tc08-nurse-retry.png) |
 
-### 12.8 Notification failure: e-mail down and SMS rejected (TC09)
+### 12.8 Notification failure: e-mail server down (TC09)
 ![TC09](documentation/diagrams/exec-tc09-notification-failure.png)
-1. The SMTP server was stopped, so the **Email connector** failed and its error expression raised `NOTIFICATION_FAILED`. The boundary caught it and tried the **SMS fallback**.
-2. The gateway rejected the SMS (HTTP 422), so a second boundary fired: *Record failed notification* logged it and alerted the coordinator.
+1. The SMTP server was stopped, so the **Email connector** failed and its error expression raised `NOTIFICATION_FAILED`.
+2. The boundary caught it: *Record failed notification* logged it and alerted the coordinator to phone the family.
 3. The **care plan continued and completed.**
 
 ![Operate TC09](documentation/screenshots/25-operate-notification-failure.png)
@@ -733,7 +753,7 @@ All three child instances ran **in parallel** from one multi-instance call activ
 | Backend web layer (validation, status codes, error body) | Spring MockMvc `@WebMvcTest` | 4 | ✅ pass |
 | Backend persistence (Flyway migrations + JPA mapping + queries) | `@DataJpaTest`, H2 in PostgreSQL mode | 2 | ✅ pass |
 | Frontend (array builder, task forms, badges, API client, discharge form) | Vitest + Testing Library | 50 | ✅ pass |
-| **End-to-end** against Camunda 8.8 + PostgreSQL + connectors | [`tools/run-scenarios.js`](tools/run-scenarios.js) | 15 scenarios, 69 assertions | ✅ 15/15 |
+| **End-to-end** against Camunda 8.8 + PostgreSQL + connectors | [`tools/run-scenarios.js`](tools/run-scenarios.js) | 17 scenarios, 75 assertions | ✅ 17/17 |
 | BPMN lint (bpmnlint recommended + Camunda 8.8 compatibility rules) | [`tools/lint-bpmn.js`](tools/lint-bpmn.js) | 2 models | ✅ 0 errors ([result](documentation/evidence/bpmn-lint-results.txt)) |
 | Production builds | `mvnw package`, `vite build` | | ✅ |
 
@@ -741,14 +761,14 @@ All three child instances ran **in parallel** from one multi-instance call activ
 
 | Required test area | Scenario(s) |
 |---|---|
-| 1 Patient registration · 2 Workflow initiation | TC01, TC12 |
+| 1 Patient registration · 2 Workflow initiation (with admin approval / rejection / role check) | TC01, TC12, TC16, TC17 |
 | 3 Nurse matching and assignment · 4 Nearest suitable nurse | TC01, TC06, TC07, TC08, TC15 |
 | 5 Seven-day visit scheduling · 7 Sequential MI | TC01, TC05 |
 | 6 Parallel MI | TC01 (physiotherapy), TC10 (call activity) |
 | 8 Pharmacy call activity · 9 Prescription fulfilment · 10 Delivery tracking | TC01, TC10, TC11 |
 | 11 High-pain risk · 12 Infection-indicator risk · 13 Readmission Risk Intervention | TC02, TC03, TC13, TC14 |
 | 14 Error boundary path | TC04, TC06, TC07, TC09, TC11, TC15 |
-| 15 Timer boundary path | TC02, TC05, TC08, TC14 |
+| 15 Timer boundary path | TC02, TC05, TC14 |
 | 16 External API failure · 17 Notification failure | TC06, TC15 · TC09 |
 | 18 Seven-day plan completion | TC01, TC05 |
 
@@ -757,7 +777,7 @@ See [`scenario-results.md`](documentation/evidence/scenario-results.md) and [`sc
 ### 13.3 Run the tests
 ```bash
 cd backend-springboot && ./mvnw test        # 23 tests
-cd frontend-react && npm test               # 50 tests
+cd frontend-react && npm test               # 65 tests
 node tools/run-scenarios.js                 # 15 end-to-end scenarios (stack must be running)
 ```
 
@@ -840,7 +860,7 @@ home-healthcare-dispatch/
 ├── bpmn-models/
 │   ├── main-home-healthcare.bpmn
 │   ├── pharmacy-prescription-fulfillment.bpmn
-│   ├── forms/                      7 Camunda Forms
+│   ├── forms/                      8 Camunda Forms
 │   └── README.md
 ├── backend-springboot/
 │   ├── src/main/java/com/homecare/dispatch/{web,dto,service,worker,domain,repository,config,exception}

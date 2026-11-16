@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar, { NAV, BrandMark } from './Sidebar.jsx';
+import { useAuth } from '../auth.jsx';
+import { authHeaders } from '../session.js';
 
 function useBackendHealth() {
   const [state, setState] = useState('checking');
   useEffect(() => {
     let alive = true;
     const check = () =>
-      fetch('/api/dashboard')
-        .then((r) => alive && setState(r.ok ? 'online' : 'degraded'))
+      fetch('/api/dashboard', { headers: authHeaders() })
+        // 401/403 still means the backend answered; the api client handles logging out.
+        .then((r) => alive && setState(r.ok || r.status === 401 || r.status === 403 ? 'online' : 'degraded'))
         .catch(() => alive && setState('offline'));
     check();
     const t = setInterval(check, 15000);
@@ -31,6 +34,7 @@ export default function Layout() {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
   const health = useBackendHealth();
+  const { user, isAdmin, logout } = useAuth();
   const current = NAV.find((n) => (n.to === '/' ? pathname === '/' : pathname.startsWith(n.to)));
   const [dot, label] = HEALTH[health];
   const today = new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
@@ -66,7 +70,13 @@ export default function Layout() {
                 <span className={`h-2 w-2 rounded-full ${dot}`} />
                 {label}
               </span>
-              <span className="hidden border-l border-stone-200 pl-4 text-stone-700 sm:inline">Care coordinator</span>
+              <span className="flex items-center gap-2 border-l border-stone-200 pl-4">
+                <span className="hidden text-stone-700 sm:inline">{user?.displayName || user?.username}</span>
+                <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium tracking-wide ${isAdmin ? 'bg-brand-800 text-white' : 'bg-stone-100 text-stone-700'}`}>
+                  {isAdmin ? 'ADMIN' : 'USER'}
+                </span>
+              </span>
+              <button type="button" className="btn-secondary px-2.5 py-1.5" onClick={logout}>Log out</button>
             </div>
           </div>
         </header>

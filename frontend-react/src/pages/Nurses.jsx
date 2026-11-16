@@ -7,6 +7,7 @@ import DataTable from '../components/DataTable.jsx';
 import StatusBadge from '../components/StatusBadge.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { asList, fmtDateTime, km, minutes } from '../format.js';
+import { useAuth } from '../auth.jsx';
 
 const SOURCE_LABEL = {
   DISTANCE_MATRIX_API: 'Distance Matrix API',
@@ -24,6 +25,7 @@ export default function Nurses() {
   const assignments = useApi(api.assignments, [], { intervalMs: 15000 });
   const toast = useToast();
   const [busy, setBusy] = useState(null);
+  const { isAdmin } = useAuth();
 
   const toggle = async (n) => {
     setBusy(n.id);
@@ -40,7 +42,7 @@ export default function Nurses() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Nurses" subtitle="Nurse pool, availability and distance-based assignments" />
+      <PageHeader title="Nurses" subtitle={isAdmin ? 'Nurse pool, availability and distance-based assignments' : 'Nurse pool and assignments (availability is changed by an admin)'} />
       <Section title="Nurse pool">
         <ErrorBanner error={nurses.error} onRetry={nurses.reload} />
         {nurses.loading && !nurses.data ? (
@@ -70,7 +72,10 @@ export default function Nurses() {
               {
                 key: 'available',
                 header: 'Available',
-                render: (r) => (
+                // Only ADMIN can change availability; USER sees a read-only badge.
+                render: (r) => !isAdmin ? (
+                  <StatusBadge value={r.available ? 'AVAILABLE' : 'CANCELED'} label={r.available ? 'Available' : 'Unavailable'} />
+                ) : (
                   <button
                     type="button"
                     role="switch"

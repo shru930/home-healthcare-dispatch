@@ -58,6 +58,16 @@ public class DischargeAndPlanWorkers {
         return new ValidationResult(valid, errors);
     }
 
+    /** Task_RejectPlan: the admin rejected the request in the Tasklist; ends the case cleanly. */
+    @JobWorker(type = "hh.reject-plan")
+    public Map<String, Object> rejectPlan(@Variable Long workflowId, @Variable Long patientId, @Variable String approvalNotes,
+                                          @Variable String requestedBy, @Variable String patientName) {
+        care.rejectRequest(workflowId, approvalNotes);
+        notifications.alert(patientId, requestedBy == null ? "ward staff" : requestedBy, "Home-care plan rejected: " + patientName,
+                "The care coordinator rejected the request. Reason: " + approvalNotes, "PLAN_REJECTED");
+        return Map.of("workflowStatus", "REJECTED");
+    }
+
     /** Task_GenerateCarePlan: builds the carePlanDays (sequential MI) and physioSessions (parallel MI) collections. */
     /** Typed job input: Jackson keeps the generic element type of the list (unlike a bare List parameter). */
     public record CarePlanInput(Long workflowId, String dischargeDate, String requiredSkill, List<PhysioSession> physioSessions) {}
@@ -73,8 +83,8 @@ public class DischargeAndPlanWorkers {
     @JobWorker(type = "hh.record-notification-failure")
     public Map<String, Object> recordNotificationFailure(@Variable Long patientId, @Variable String familyEmail, @Variable String familyPhone,
                                                          @Variable String notificationCategory, @Variable String notificationError) {
-        notifications.record(patientId, "EMAIL+SMS", familyEmail + " / " + familyPhone, "Family notification failed",
-                "Both e-mail and SMS delivery failed for " + notificationCategory + ". The coordinator must call the family.",
+        notifications.record(patientId, "EMAIL", familyEmail, "Family notification failed",
+                "E-mail delivery failed for " + notificationCategory + ". The coordinator must call the family on " + familyPhone + ".",
                 notificationCategory, "FAILED", null, notificationError);
         notifications.alert(patientId, "coordinator", "Call the family: notification failed",
                 "Automatic " + notificationCategory + " notification could not be delivered: " + notificationError, "NOTIFICATION_FAILURE");

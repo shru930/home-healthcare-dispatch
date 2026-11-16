@@ -10,12 +10,16 @@ import PatientForm from '../components/PatientForm.jsx';
 import DischargeForm from '../components/DischargeForm.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { fmtDate } from '../format.js';
+import { useAuth } from '../auth.jsx';
 
 export default function Patients() {
   const list = useApi(api.patients, []);
   const wfs = useApi(api.workflows, []);
   const toast = useToast();
   const navigate = useNavigate();
+  const { isAdmin } = useAuth();
+  // USER submits a request that an admin approves; ADMIN starts the plan directly (same API call).
+  const dischargeLabel = isAdmin ? 'Discharge & start 7-day plan' : 'Submit discharge request';
   const [showRegister, setShowRegister] = useState(false);
   const [dischargeFor, setDischargeFor] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -43,7 +47,8 @@ export default function Patients() {
     setFormError(null);
     try {
       const res = await api.discharge(dischargeFor.id, body);
-      toast.success(`7-day plan started. Process instance ${res.processInstanceKey} (${res.currentStage || res.status})`);
+      if (isAdmin) toast.success(`7-day plan started. Process instance ${res.processInstanceKey} (${res.currentStage || res.status})`);
+      else toast.success('Request sent to admin for approval');
       setDischargeFor(null);
       navigate(`/tracker/${res.processInstanceKey}`);
     } catch (e) {
@@ -90,7 +95,7 @@ export default function Patients() {
                     <div className="flex flex-wrap justify-end gap-2">
                       {r.status !== 'IN_CARE' && (
                         <button type="button" className="btn-primary whitespace-nowrap" onClick={() => { setFormError(null); setDischargeFor(r); }}>
-                          Discharge &amp; start 7-day plan
+                          {dischargeLabel}
                         </button>
                       )}
                       {wf && (
@@ -116,11 +121,11 @@ export default function Patients() {
         </Modal>
       )}
       {dischargeFor && (
-        <Modal title="Discharge & start 7-day home-care plan" onClose={() => setDischargeFor(null)} wide>
+        <Modal title={isAdmin ? 'Discharge & start 7-day home-care plan' : 'Submit discharge request'} onClose={() => setDischargeFor(null)} wide>
           <div className="mb-3">
             <ErrorBanner error={formError} />
           </div>
-          <DischargeForm patient={dischargeFor} onSubmit={discharge} submitting={submitting} onCancel={() => setDischargeFor(null)} />
+          <DischargeForm patient={dischargeFor} submitLabel={dischargeLabel} onSubmit={discharge} submitting={submitting} onCancel={() => setDischargeFor(null)} />
         </Modal>
       )}
     </div>

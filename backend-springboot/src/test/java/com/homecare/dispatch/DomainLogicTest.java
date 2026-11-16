@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
 class DomainLogicTest {
 
     static final HomeCareProperties PROPS = new HomeCareProperties(true, null, null,
-            new HomeCareProperties.Risk(6, 8, 38.0, 39.0), new HomeCareProperties.Matching(60, 3), null, null, null);
+            new HomeCareProperties.Risk(6, 8, 38.0, 39.0), new HomeCareProperties.Matching(60, 3), null, null, null, null);
 
     @Nested
     class ReadmissionRisk {

@@ -20,7 +20,13 @@ public class TaskService {
             "patientName", "patientMrn", "patientAddress", "patientPhone", "surgeryType", "dischargeDate", "familyContactName",
             "familyPhone", "familyEmail", "doctorName", "careDay", "session", "visitId", "appointmentId", "riskLevel", "riskReasons",
             "interventionId", "validationErrors", "assignedNurse", "candidateNurses", "nurseDistances", "planSummary", "gapCount",
-            "painScore", "temperature", "nurseNotes", "physiotherapist", "requiredSkill");
+            "painScore", "temperature", "nurseNotes", "physiotherapist", "requiredSkill",
+            "prescriptions", "physioSessions", "requestedBy", "hospital", "approvalDecision", "approvalNotes");
+
+    /** Candidate groups each role works on. ADMIN approves and decides; USER does the field work. */
+    public static final Map<String, List<String>> ROLE_GROUPS = Map.of(
+            "ADMIN", List.of("admins", "coordinators", "doctors"),
+            "USER", List.of("nurses", "physiotherapists"));
 
     private final CamundaClient camunda;
     private final CamundaQueryService query;
@@ -34,7 +40,10 @@ public class TaskService {
         if (assignee != null && !assignee.isBlank()) filter.put("assignee", assignee);
         if (candidateGroup != null && !candidateGroup.isBlank()) filter.put("candidateGroup", candidateGroup);
         if (processInstanceKey != null) filter.put("processInstanceKey", String.valueOf(processInstanceKey));
-        return query.userTasks(filter).stream().map(TaskService::view)
+        String role = com.homecare.dispatch.security.CurrentUser.get().map(u -> u.role()).orElse("ADMIN");
+        return query.userTasks(filter).stream()
+                .filter(t -> allowed(role, t.get("candidateGroups")))
+                .map(TaskService::view)
                 .sorted(Comparator.comparing(m -> String.valueOf(m.get("creationDate")))).toList();
     }
 
@@ -66,7 +75,15 @@ public class TaskService {
         if (task == null || !"CREATED".equals(task.get("state"))) {
             throw ApiException.conflict("Task " + key + " is not open any more");
         }
+        String role = com.homecare.dispatch.security.CurrentUser.get().map(u -> u.role()).orElse("ADMIN");
+        if (!allowed(role, task.get("candidateGroups"))) {
+            throw new ApiException(org.springframework.http.HttpStatus.FORBIDDEN,
+                    "This task belongs to " + task.get("candidateGroups") + "; your role " + role + " cannot complete it");
+        }
         Map<String, Object> clean = validate(String.valueOf(task.get("elementId")), variables);
+        if ("Task_ApprovePlan".equals(task.get("elementId"))) {
+            clean.put("approvedBy", com.homecare.dispatch.security.CurrentUser.get().map(u -> u.username()).orElse(actingUser));
+        }
         if (task.get("assignee") == null && actingUser != null && !actingUser.isBlank()) {
             claim(key, actingUser);
         }
@@ -84,6 +101,11 @@ public class TaskService {
     Map<String, Object> validate(String elementId, Map<String, Object> in) {
         Map<String, Object> out = new LinkedHashMap<>();
         switch (elementId) {
+            case "Task_ApprovePlan" -> {
+                String decision = oneOf(in, "approvalDecision", "APPROVED", "REJECTED");
+                out.put("approvalDecision", decision);
+                out.put("approvalNotes", str(in, "approvalNotes", "REJECTED".equals(decision)));
+            }
             case "Task_HealthAssessment" -> {
                 String status = oneOf(in, "visitStatus", "COMPLETED", "INCOMPLETE");
                 out.put("visitStatus", status);
@@ -129,6 +151,12 @@ public class TaskService {
             default -> throw ApiException.badRequest("Unknown task type " + elementId);
         }
         return out;
+    }
+
+    @SuppressWarnings("unchecked")
+    static boolean allowed(String role, Object candidateGroups) {
+        List<String> groups = candidateGroups instanceof List<?> l ? (List<String>) l : List.of();
+        return groups.stream().anyMatch(g -> ROLE_GROUPS.getOrDefault(role, List.of()).contains(g));
     }
 
     // ------------------------------------------------------------------ helpers

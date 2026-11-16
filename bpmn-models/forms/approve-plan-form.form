@@ -1,0 +1,74 @@
+{
+  "executionPlatform": "Camunda Cloud",
+  "executionPlatformVersion": "8.8.0",
+  "exporter": {
+    "name": "Camunda Modeler",
+    "version": "5.50.1"
+  },
+  "schemaVersion": 16,
+  "id": "approve-plan-form",
+  "type": "default",
+  "components": [
+    {
+      "type": "text",
+      "id": "Heading",
+      "text": "# Approve home-care plan\n\nA ward staff member submitted this discharge request. Check the details and approve or reject the seven-day plan."
+    },
+    {
+      "id": "Field_0",
+      "type": "textfield",
+      "key": "patientName",
+      "label": "Patient",
+      "readonly": true
+    },
+    {
+      "id": "Field_1",
+      "type": "textfield",
+      "key": "surgeryType",
+      "label": "Surgery",
+      "readonly": true
+    },
+    {
+      "id": "Field_2",
+      "type": "textfield",
+      "key": "dischargeDate",
+      "label": "Discharge date",
+      "readonly": true
+    },
+    {
+      "id": "Field_3",
+      "type": "textfield",
+      "key": "requestedBy",
+      "label": "Requested by",
+      "readonly": true
+    },
+    {
+      "id": "Field_4",
+      "type": "select",
+      "key": "approvalDecision",
+      "label": "Decision",
+      "validate": {
+        "required": true
+      },
+      "values": [
+        {
+          "label": "Approve the plan",
+          "value": "APPROVED"
+        },
+        {
+          "label": "Reject the request",
+          "value": "REJECTED"
+        }
+      ]
+    },
+    {
+      "id": "Field_5",
+      "type": "textarea",
+      "key": "approvalNotes",
+      "label": "Notes (required when rejecting)",
+      "validate": {
+        "required": false
+      }
+    }
+  ]
+}

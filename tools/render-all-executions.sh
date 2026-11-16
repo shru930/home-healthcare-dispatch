@@ -3,7 +3,8 @@
 cd "$(dirname "$0")/.."
 R=documentation/evidence/scenario-results.json
 k() { python -c "import json;print([r['processInstanceKey'] for r in json.load(open('$R'))['results'] if r['id']=='$1'][0])"; }
-live() { curl -s localhost:8090/api/workflows | python -c "import sys,json;print([w['processInstanceKey'] for w in json.load(sys.stdin) if w['patientName']=='$1' and w['status']=='ACTIVE'][0])"; }
+TOKEN=$(curl -s -X POST localhost:8090/api/auth/login -H 'Content-Type: application/json' -d '{"username":"admin","password":"admin@123"}' | python -c "import sys,json;print(json.load(sys.stdin)['token'])")
+live() { curl -s -H "Authorization: Bearer $TOKEN" localhost:8090/api/workflows | python -c "import sys,json;print([w['processInstanceKey'] for w in json.load(sys.stdin) if w['patientName']=='$1' and w['status']=='ACTIVE'][0])"; }
 child() { curl -s -X POST localhost:8080/v2/process-instances/search -H 'Content-Type: application/json' -d "{\"filter\":{\"parentProcessInstanceKey\":\"$1\"}}" | python -c "import sys,json;print(' '.join(i['processInstanceKey'] for i in json.load(sys.stdin)['items']))"; }
 M=bpmn-models/main-home-healthcare.bpmn; C=bpmn-models/pharmacy-prescription-fulfillment.bpmn; O=documentation/diagrams
 DISPATCH="60 240 1660 560"; VISIT="1700 460 2080 900"; RISK="2520 570 1280 740"; PHYSIO="1700 40 760 320"; CHILD="40 10 1720 520"

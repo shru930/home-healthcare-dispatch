@@ -13,11 +13,15 @@ import TrackerList from './pages/TrackerList.jsx';
 import Notifications from './pages/Notifications.jsx';
 import Demo from './pages/Demo.jsx';
 import NotFound from './pages/NotFound.jsx';
+import Login from './pages/Login.jsx';
+import { RequireAuth, RequireAdmin } from './auth.jsx';
 
 export default function App() {
   return (
     <Routes>
-      <Route element={<Layout />}>
+      <Route path="login" element={<Login />} />
+      {/* Every other page requires login; admin-only pages are wrapped in RequireAdmin. */}
+      <Route element={<RequireAuth><Layout /></RequireAuth>}>
         <Route index element={<Dashboard />} />
         <Route path="patients" element={<Patients />} />
         <Route path="nurses" element={<Nurses />} />
@@ -29,7 +33,7 @@ export default function App() {
         <Route path="tracker" element={<TrackerList />} />
         <Route path="tracker/:processInstanceKey" element={<Tracker />} />
         <Route path="notifications" element={<Notifications />} />
-        <Route path="demo" element={<Demo />} />
+        <Route path="demo" element={<RequireAdmin><Demo /></RequireAdmin>} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

@@ -6,11 +6,18 @@ import { Spinner, ErrorBanner, EmptyState } from '../components/Feedback.jsx';
 import DataTable from '../components/DataTable.jsx';
 import StatusBadge from '../components/StatusBadge.jsx';
 import { fmtDateTime } from '../format.js';
+import { useAuth } from '../auth.jsx';
+
+export const APPROVE_TASK = 'Task_ApprovePlan';
 
 export default function Dashboard() {
   const dash = useApi(api.dashboard, [], { intervalMs: 10000 });
   const wfs = useApi(api.workflows, [], { intervalMs: 10000 });
   const alerts = useApi(api.alerts, [], { intervalMs: 10000 });
+  const { isAdmin } = useAuth();
+  // Admin only: open "Approve home-care plan" tasks (the backend returns admin tasks for ADMIN).
+  const approvals = useApi(() => (isAdmin ? api.tasks() : Promise.resolve([])), [isAdmin], { intervalMs: 10000 });
+  const pendingApprovals = (approvals.data || []).filter((t) => t.elementId === APPROVE_TASK).length;
   const d = dash.data;
 
   return (
@@ -21,10 +28,21 @@ export default function Dashboard() {
         actions={
           <>
             <Link to="/tasks" className="btn-secondary">Open Tasklist</Link>
-            <Link to="/patients" className="btn-primary">Discharge a patient</Link>
+            <Link to="/patients" className="btn-primary">{isAdmin ? 'Discharge a patient' : 'Submit discharge request'}</Link>
           </>
         }
       />
+      {isAdmin && (
+        <Link to="/tasks" className="card card-hover flex items-center justify-between gap-4 border-l-[3px] border-l-amber-500 px-4 py-3.5">
+          <div>
+            <p className="text-xs font-medium text-stone-500">Pending approvals</p>
+            <p className="text-xs text-stone-400">Discharge requests from ward staff waiting for your decision</p>
+          </div>
+          <p className="font-display text-[30px] font-semibold leading-tight tabular-nums text-ink">
+            {approvals.loading && !approvals.data ? '-' : approvals.error ? '?' : pendingApprovals}
+          </p>
+        </Link>
+      )}
       <ErrorBanner error={dash.error} onRetry={dash.reload} />
       {dash.loading && !d ? (
         <Spinner />

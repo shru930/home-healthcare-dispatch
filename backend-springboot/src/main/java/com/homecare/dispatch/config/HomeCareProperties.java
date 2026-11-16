@@ -15,7 +15,8 @@ public record HomeCareProperties(
         Matching matching,
         Mail mail,
         Sms sms,
-        Google google) {
+        Google google,
+        java.util.List<User> users) {
 
     public record Processes(String mainProcessId, String pharmacyProcessId) {}
 
@@ -34,4 +35,7 @@ public record HomeCareProperties(
     public record Sms(String apiKey) {}
 
     public record Google(String apiKey) {}
+
+    /** Login account. role = ADMIN (approves) or USER (submits requests, field work). */
+    public record User(String username, String password, String displayName, String role) {}
 }

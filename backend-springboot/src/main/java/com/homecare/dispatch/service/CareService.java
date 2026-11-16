@@ -275,6 +275,22 @@ public class CareService {
         });
     }
 
+    /** Admin rejected the discharge request: no plan is created, prescriptions are cancelled. */
+    @Transactional
+    public void rejectRequest(Long workflowId, String notes) {
+        workflows.findById(workflowId).ifPresent(w -> {
+            w.setStatus("REJECTED");
+            w.setCurrentStage("Plan rejected by admin: " + (notes == null ? "" : notes));
+            w.setEndedAt(LocalDateTime.now());
+            Patient p = w.getPatient();
+            p.setStatus("PLAN_REJECTED");
+            p.setUpdatedAt(LocalDateTime.now());
+            prescriptions.findByPatientIdOrderByIdAsc(p.getId()).stream()
+                    .filter(rx -> rx.getCarePlan() == null && "PRESCRIBED".equals(rx.getStatus()))
+                    .forEach(rx -> { rx.setStatus("CANCELLED"); rx.setStatusReason("Home-care plan rejected"); });
+        });
+    }
+
     @Transactional
     public void closePlan(Long carePlanId) {
         plans.findById(carePlanId).ifPresent(plan -> {

@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom';
+import { useAuth } from '../auth.jsx';
 
 export const NAV = [
   { to: '/', label: 'Dashboard', group: 'Overview', icon: 'M4 5h6v6H4zM14 5h6v4h-6zM4 15h6v4H4zM14 13h6v6h-6z' },
@@ -11,7 +12,7 @@ export const NAV = [
   { to: '/pharmacy', label: 'Pharmacy', group: 'Care', icon: 'M10.5 20.5l10-10a4.95 4.95 0 00-7-7l-10 10a4.95 4.95 0 007 7zM8.5 8.5l7 7' },
   { to: '/risk', label: 'Readmission risk', group: 'Care', icon: 'M12 9v4m0 4h.01M10.3 3.9L2 18a2 2 0 001.7 3h16.6a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z' },
   { to: '/notifications', label: 'Notifications', group: 'Admin', icon: 'M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 00-12 0v3.2a2 2 0 01-.6 1.4L4 17h5m6 0a3 3 0 11-6 0' },
-  { to: '/demo', label: 'Demo controls', group: 'Admin', icon: 'M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0M14 4v4M8 10v4M16 16v4' },
+  { to: '/demo', label: 'Demo controls', group: 'Admin', adminOnly: true, icon: 'M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0M14 4v4M8 10v4M16 16v4' },
 ];
 
 export function Icon({ d, className = 'h-4 w-4' }) {
@@ -33,7 +34,9 @@ export function BrandMark({ size = 'h-8 w-8' }) {
 }
 
 export default function Sidebar({ onNavigate }) {
-  const groups = [...new Set(NAV.map((n) => n.group))];
+  const { isAdmin } = useAuth();
+  const items = NAV.filter((n) => isAdmin || !n.adminOnly);
+  const groups = [...new Set(items.map((n) => n.group))];
   return (
     <nav className="flex h-full flex-col border-r border-stone-200 bg-white">
       <div className="flex items-center gap-3 border-b border-stone-200 px-5 py-4">
@@ -49,7 +52,7 @@ export default function Sidebar({ onNavigate }) {
           <div key={g}>
             <p className="mb-1 px-2 text-[11px] font-medium uppercase tracking-wider text-stone-400">{g}</p>
             <ul>
-              {NAV.filter((n) => n.group === g).map((n) => (
+              {items.filter((n) => n.group === g).map((n) => (
                 <li key={n.to}>
                   <NavLink
                     to={n.to}

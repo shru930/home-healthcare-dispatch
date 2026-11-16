@@ -16,8 +16,16 @@ const today = new Date();
 const iso = d => d.toISOString().slice(0, 10);
 const daysAgo = n => iso(new Date(today.getTime() - n * 86400000));
 
-async function api(method, p, body) {
-  const r = await fetch(API + p, { method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+const TOKENS = {};
+async function login(username, password) {
+  const r = await fetch(API + '/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
+  if (!r.ok) throw new Error('login failed for ' + username);
+  return (await r.json()).token;
+}
+async function api(method, p, body, as = 'ADMIN') {
+  const headers = { Authorization: 'Bearer ' + TOKENS[as] };
+  if (body) headers['Content-Type'] = 'application/json';
+  const r = await fetch(API + p, { method, headers, body: body ? JSON.stringify(body) : undefined });
   const t = await r.text();
   const j = t ? JSON.parse(t) : {};
   if (!r.ok) throw new Error(`${method} ${p} -> ${r.status} ${j.message || t}`);
@@ -42,11 +50,11 @@ async function startCase({ name, lat = 12.9791, lng = 80.2209, physio = [{ dayNu
     mrn: `MRN-${seq}`, firstName: first, lastName: last, dateOfBirth: '1960-05-14', gender: 'F', phone: '9876500001',
     email: `${first.toLowerCase()}@example.com`, addressLine: '12 Lake View Road', city: 'Chennai', postalCode: '600042',
     latitude: lat, longitude: lng, familyContactName: 'Family of ' + first, familyContactPhone: familyPhone,
-    familyContactEmail: `family.${first.toLowerCase()}${seq}@example.com` });
+    familyContactEmail: `family.${first.toLowerCase()}${seq}@example.com` }, 'USER');
   const w = await api('POST', `/patients/${p.id}/discharge`, {
     surgeryType: 'Total knee replacement', surgeryDate: surgery, dischargeDate: discharge, hospital: 'City General Hospital',
     doctorName: 'Dr. Meera Rao', doctorEmail: 'meera.rao@citygeneral.example', requiredSkill: 'WOUND_CARE',
-    physioSessions: physio, prescriptions: rx, timerOverrides: timers });
+    physioSessions: physio, prescriptions: rx, timerOverrides: timers }, 'USER');
   return { patientId: p.id, key: String(w.processInstanceKey), mrn: p.mrn };
 }
 
@@ -61,19 +69,20 @@ async function drive(c, policy = {}, timeoutSec = 240) {
   while ((Date.now() - t0) / 1000 < timeoutSec) {
     const inst = (await cam('process-instances', { processInstanceKey: c.key }))[0];
     if (inst && inst.state !== 'ACTIVE') { stats.state = inst.state; break; }
-    const tasks = await api('GET', `/tasks?processInstanceKey=${c.key}`);
+    const tasks = [...(await api('GET', `/tasks?processInstanceKey=${c.key}`, null, 'USER')).map(t => ({ ...t, as: 'USER' })),
+                   ...(await api('GET', `/tasks?processInstanceKey=${c.key}`, null, 'ADMIN')).map(t => ({ ...t, as: 'ADMIN' }))];
     stats.maxOpenAssessments = Math.max(stats.maxOpenAssessments, tasks.filter(t => t.elementId === 'Task_HealthAssessment').length);
     stats.maxOpenPhysio = Math.max(stats.maxOpenPhysio, tasks.filter(t => t.elementId === 'Task_PhysioSession').length);
     for (const t of tasks) {
       if (done.has(t.userTaskKey)) continue;
       firstSeen[t.userTaskKey] = firstSeen[t.userTaskKey] || Date.now();
-      const d = await api('GET', `/tasks/${t.userTaskKey}`);
+      const d = await api('GET', `/tasks/${t.userTaskKey}`, null, t.as);
       if (d.contextLoading || !d.context || !Object.keys(d.context).length) continue; // variables not indexed yet, retry next tick
       const handler = policy[t.elementId] ?? defaults[t.elementId];
       const answer = handler ? await handler(d.context || {}, { ageMs: Date.now() - firstSeen[t.userTaskKey], c, stats }) : undefined;
       if (answer == null) continue; // leave it open (timer paths)
       try {
-        await api('POST', `/tasks/${t.userTaskKey}/complete`, { variables: answer, actingUser: t.assignee || 'coordinator' });
+        await api('POST', `/tasks/${t.userTaskKey}/complete`, { variables: answer, actingUser: t.assignee || (t.as === 'ADMIN' ? 'admin' : 'user') }, t.as);
         done.add(t.userTaskKey);
         stats.completed.push(t.elementId);
         if (t.elementId === 'Task_HealthAssessment') stats.assessmentDays.push(d.context.careDay?.day);
@@ -105,6 +114,7 @@ async function drive(c, policy = {}, timeoutSec = 240) {
 }
 
 const defaults = {
+  Task_ApprovePlan: () => ({ approvalDecision: 'APPROVED', approvalNotes: 'Plan checked and approved' }),
   Task_HealthAssessment: () => normal,
   Task_PhysioSession: () => ({ physioStatus: 'COMPLETED', physioNotes: 'Exercises completed' }),
   Task_DoctorReview: () => ({ doctorDecision: 'HOME_CARE', doctorNotes: 'Adjust analgesia, continue home care' }),
@@ -223,6 +233,38 @@ const SCENARIOS = [
         ['Process COMPLETED', s.state === 'COMPLETED'],
       ]];
     } },
+  { id: 'TC16', title: 'Admin rejects the discharge request -> "Approved?" = No -> plan rejected, requester informed',
+    covers: [2],
+    async run() {
+      const c = await startCase({ name: 'Prakash Menon', physio: [{ dayNumber: 3, focus: 'Mobility' }], rx: [{ medication: 'Paracetamol 500mg', dosage: '1 tab', quantity: 10, controlled: false, doctorApproved: true }] });
+      const s = await drive(c, { Task_ApprovePlan: () => ({ approvalDecision: 'REJECTED', approvalNotes: 'Patient will stay with family in another city' }) });
+      return [c, s, [
+        ['Request waited for the ADMIN approval task', ran(s, 'Task_ApprovePlan')],
+        ['Gateway "Approved?" took the No branch', ran(s, 'Task_RejectPlan') && ran(s, 'End_PlanRejected')],
+        ['No care plan or nurse was created', !ran(s, 'Task_GenerateCarePlan') && !s.tracker.assignment],
+        ['Workflow marked REJECTED, patient PLAN_REJECTED', s.tracker.status === 'REJECTED' && s.tracker.patient?.status === 'PLAN_REJECTED'],
+      ]];
+    } },
+  { id: 'TC17', title: 'Role check: the ward USER cannot complete the ADMIN approval task (HTTP 403)',
+    covers: [2],
+    async run() {
+      const c = await startCase({ name: 'Role Check', physio: [{ dayNumber: 3, focus: 'Mobility' }], rx: [{ medication: 'Paracetamol 500mg', dosage: '1 tab', quantity: 10, controlled: false, doctorApproved: true }] });
+      let task;
+      for (let i = 0; i < 30 && !task; i++) { await sleep(1000); task = (await api('GET', `/tasks?processInstanceKey=${c.key}`)).find(t => t.elementId === 'Task_ApprovePlan'); }
+      const userList = await api('GET', `/tasks?processInstanceKey=${c.key}`, null, 'USER');
+      let status = 0;
+      const r = await fetch(`${API}/tasks/${task.userTaskKey}/complete`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + TOKENS.USER },
+        body: JSON.stringify({ variables: { approvalDecision: 'APPROVED' }, actingUser: 'user' }) });
+      status = r.status;
+      const noToken = (await fetch(`${API}/dashboard`)).status;
+      const s = await drive(c);
+      return [c, s, [
+        ['Approval task is not in the USER inbox', !userList.some(t => t.elementId === 'Task_ApprovePlan')],
+        ['USER completing it gets 403 Forbidden', status === 403],
+        ['Call without login gets 401', noToken === 401],
+        ['ADMIN approved it and the plan completed', ran(s, 'Task_ApprovePlan') && s.state === 'COMPLETED'],
+      ]];
+    } },
   { id: 'TC15', title: 'External API failure: Distance Matrix HTTP 500 -> connector errorExpression -> DISTANCE_API_ERROR boundary on the REST task',
     covers: [16, 14],
     async run() {
@@ -250,26 +292,23 @@ const SCENARIOS = [
         ['Process COMPLETED', s.state === 'COMPLETED'],
       ]];
     } },
-  { id: 'TC08', title: 'Nurse pool empty -> timer retry loop (3 attempts) -> manual assignment',
-    covers: [3, 15],
+  { id: 'TC08', title: 'No nurse available -> gateway "None available" -> manual assignment by the admin',
+    covers: [3, 14],
     async run() {
       await fault('NURSE_POOL', 'EMPTY');
-      const c = await startCase({ name: 'Kavitha Raj', physio: [{ dayNumber: 3, focus: 'Mobility' }], rx: [{ medication: 'Paracetamol 500mg', dosage: '1 tab', quantity: 10, controlled: false, doctorApproved: true }],
-                                  timers: { nurseRetryWait: 'PT3S' } });
+      const c = await startCase({ name: 'Kavitha Raj', physio: [{ dayNumber: 3, focus: 'Mobility' }], rx: [{ medication: 'Paracetamol 500mg', dosage: '1 tab', quantity: 10, controlled: false, doctorApproved: true }] });
       const s = await drive(c, { onTick: async (cc, st) => { if (st.completed.includes('Task_ManualNurse')) await resetFaults(); } });
       await resetFaults();
       return [c, s, [
-        ['Nurse search ran 3 times', count(s, 'Task_FetchNurses') === 3],
-        ['Retry timer fired twice', count(s, 'Timer_NurseRetry') === 2],
-        ['Manual assignment after the retries', ran(s, 'Task_ManualNurse')],
+        ['Nurse search found nobody (nurseCount = 0)', count(s, 'Task_FetchNurses') === 1],
+        ['Gateway sent the case to manual assignment', ran(s, 'Task_ManualNurse') && s.tracker.assignment?.mode === 'MANUAL'],
         ['Process COMPLETED', s.state === 'COMPLETED'],
       ]];
     } },
-  { id: 'TC09', title: 'Notification failure: SMTP down -> SMS fallback; SMS rejected too -> failure recorded, care continues',
+  { id: 'TC09', title: 'Notification failure: SMTP server down -> e-mail error boundary -> failure recorded, care continues',
     covers: [17],
     async run() {
       await fault('EMAIL_SERVER', 'DOWN');
-      await fault('SMS_GATEWAY', 'REJECT');
       const c = await startCase({ name: 'Deepa Nair', physio: [{ dayNumber: 3, focus: 'Mobility' }], rx: [{ medication: 'Paracetamol 500mg', dosage: '1 tab', quantity: 10, controlled: false, doctorApproved: true }] });
       let reset = false;
       const s = await drive(c, { onTick: async (cc, st) => {
@@ -280,8 +319,7 @@ const SCENARIOS = [
       await resetFaults();
       return [c, s, [
         ['E-mail connector failed -> error boundary', ran(s, 'Err_EmailAssign')],
-        ['SMS fallback failed -> error boundary', ran(s, 'Err_SmsAssign')],
-        ['Failure recorded and coordinator alerted', ran(s, 'Task_RecordNotifyFailure') && notif(s, 'EMAIL+SMS', 'NURSE_ASSIGNMENT', 'FAILED') === 1],
+        ['Failure recorded and coordinator alerted', ran(s, 'Task_RecordNotifyFailure') && notif(s, 'EMAIL', 'NURSE_ASSIGNMENT', 'FAILED') === 1],
         ['Care plan continued and completed', s.state === 'COMPLETED' && ran(s, 'Task_HealthAssessment')],
       ]];
     } },
@@ -359,6 +397,8 @@ const SCENARIOS = [
 
 (async () => {
   const only = process.argv.slice(2);
+  TOKENS.ADMIN = await login('admin', process.env.APP_ADMIN_PASSWORD || 'admin@123');
+  TOKENS.USER = await login('user', process.env.APP_USER_PASSWORD || 'user@123');
   await resetFaults();
   const results = [];
   for (const sc of SCENARIOS.filter(x => !only.length || only.includes(x.id))) {

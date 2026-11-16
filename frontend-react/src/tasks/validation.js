@@ -64,3 +64,11 @@ export function validateGapReview(v) {
   if (blank(v.reviewNotes)) e.reviewNotes = 'Review notes are required';
   return e;
 }
+
+/** Task_ApprovePlan: decision is required; notes are required only when rejecting. */
+export function validateApprovePlan(v) {
+  const e = {};
+  if (!oneOf(v.approvalDecision, ['APPROVED', 'REJECTED'])) e.approvalDecision = 'Choose Approve or Reject';
+  if (v.approvalDecision === 'REJECTED' && blank(v.approvalNotes)) e.approvalNotes = 'Please give a reason for rejecting the plan';
+  return e;
+}

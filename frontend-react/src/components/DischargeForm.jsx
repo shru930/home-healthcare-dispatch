@@ -84,7 +84,7 @@ export function buildDischargePayload(d) {
   };
 }
 
-export default function DischargeForm({ patient, onSubmit, submitting, onCancel }) {
+export default function DischargeForm({ patient, onSubmit, submitting, onCancel, submitLabel = 'Discharge & start 7-day plan' }) {
   const [d, setD] = useState({
     surgeryType: patient?.surgeryType || '',
     surgeryDate: '',
@@ -236,7 +236,7 @@ export default function DischargeForm({ patient, onSubmit, submitting, onCancel 
           </button>
         )}
         <button type="submit" className="btn-primary" disabled={submitting}>
-          {submitting ? 'Starting workflow...' : 'Discharge & start 7-day plan'}
+          {submitting ? 'Starting workflow...' : submitLabel}
         </button>
       </div>
     </form>

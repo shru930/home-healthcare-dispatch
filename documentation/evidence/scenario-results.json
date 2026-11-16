@@ -1,5 +1,5 @@
 {
-  "runAt": "2026-11-16T12:43:47.762Z",
+  "runAt": "2026-11-16T13:40:19.256Z",
   "results": [
     {
       "id": "TC01",
@@ -17,10 +17,10 @@
         10,
         18
       ],
-      "processInstanceKey": "2251799814119230",
-      "patientMrn": "MRN-178",
+      "processInstanceKey": "2251799814156446",
+      "patientMrn": "MRN-89782",
       "state": "COMPLETED",
-      "seconds": 27,
+      "seconds": 29,
       "pass": true,
       "checks": [
         {
@@ -85,10 +85,10 @@
         13,
         15
       ],
-      "processInstanceKey": "2251799814100262",
-      "patientMrn": "MRN-58294",
+      "processInstanceKey": "2251799814136855",
+      "patientMrn": "MRN-15436",
       "state": "COMPLETED",
-      "seconds": 50,
+      "seconds": 44,
       "pass": true,
       "checks": [
         {
@@ -124,10 +124,10 @@
         12,
         13
       ],
-      "processInstanceKey": "2251799814101447",
-      "patientMrn": "MRN-58295",
+      "processInstanceKey": "2251799814138042",
+      "patientMrn": "MRN-15437",
       "state": "COMPLETED",
-      "seconds": 32,
+      "seconds": 28,
       "pass": true,
       "checks": [
         {
@@ -158,10 +158,10 @@
       "covers": [
         14
       ],
-      "processInstanceKey": "2251799814102537",
-      "patientMrn": "MRN-58296",
+      "processInstanceKey": "2251799814139104",
+      "patientMrn": "MRN-15438",
       "state": "COMPLETED",
-      "seconds": 34,
+      "seconds": 32,
       "pass": true,
       "checks": [
         {
@@ -193,10 +193,10 @@
         15,
         18
       ],
-      "processInstanceKey": "2251799814103632",
-      "patientMrn": "MRN-58297",
+      "processInstanceKey": "2251799814140209",
+      "patientMrn": "MRN-15439",
       "state": "COMPLETED",
-      "seconds": 37,
+      "seconds": 40,
       "pass": true,
       "checks": [
         {
@@ -224,10 +224,10 @@
         16,
         14
       ],
-      "processInstanceKey": "2251799814104660",
-      "patientMrn": "MRN-58298",
+      "processInstanceKey": "2251799814141295",
+      "patientMrn": "MRN-15440",
       "state": "COMPLETED",
-      "seconds": 30,
+      "seconds": 29,
       "pass": true,
       "checks": [
         {
@@ -255,10 +255,10 @@
         3,
         14
       ],
-      "processInstanceKey": "2251799814106713",
-      "patientMrn": "MRN-58300",
+      "processInstanceKey": "2251799814144548",
+      "patientMrn": "MRN-15444",
       "state": "COMPLETED",
-      "seconds": 29,
+      "seconds": 30,
       "pass": true,
       "checks": [
         {
@@ -277,27 +277,23 @@
     },
     {
       "id": "TC08",
-      "title": "Nurse pool empty -> timer retry loop (3 attempts) -> manual assignment",
+      "title": "No nurse available -> gateway \"None available\" -> manual assignment by the admin",
       "covers": [
         3,
-        15
+        14
       ],
-      "processInstanceKey": "2251799814107734",
-      "patientMrn": "MRN-58301",
+      "processInstanceKey": "2251799814145597",
+      "patientMrn": "MRN-15445",
       "state": "COMPLETED",
-      "seconds": 39,
+      "seconds": 34,
       "pass": true,
       "checks": [
         {
-          "name": "Nurse search ran 3 times",
+          "name": "Nurse search found nobody (nurseCount = 0)",
           "ok": true
         },
         {
-          "name": "Retry timer fired twice",
-          "ok": true
-        },
-        {
-          "name": "Manual assignment after the retries",
+          "name": "Gateway sent the case to manual assignment",
           "ok": true
         },
         {
@@ -308,22 +304,18 @@
     },
     {
       "id": "TC09",
-      "title": "Notification failure: SMTP down -> SMS fallback; SMS rejected too -> failure recorded, care continues",
+      "title": "Notification failure: SMTP server down -> e-mail error boundary -> failure recorded, care continues",
       "covers": [
         17
       ],
-      "processInstanceKey": "2251799814108778",
-      "patientMrn": "MRN-58302",
+      "processInstanceKey": "2251799814146632",
+      "patientMrn": "MRN-15446",
       "state": "COMPLETED",
-      "seconds": 31,
+      "seconds": 34,
       "pass": true,
       "checks": [
         {
           "name": "E-mail connector failed -> error boundary",
-          "ok": true
-        },
-        {
-          "name": "SMS fallback failed -> error boundary",
           "ok": true
         },
         {
@@ -344,10 +336,10 @@
         9,
         10
       ],
-      "processInstanceKey": "2251799814109824",
-      "patientMrn": "MRN-58303",
+      "processInstanceKey": "2251799814147710",
+      "patientMrn": "MRN-15447",
       "state": "COMPLETED",
-      "seconds": 32,
+      "seconds": 35,
       "pass": true,
       "checks": [
         {
@@ -388,10 +380,10 @@
         10,
         14
       ],
-      "processInstanceKey": "2251799814111027",
-      "patientMrn": "MRN-58304",
+      "processInstanceKey": "2251799814148955",
+      "patientMrn": "MRN-15448",
       "state": "COMPLETED",
-      "seconds": 30,
+      "seconds": 33,
       "pass": true,
       "checks": [
         {
@@ -415,10 +407,10 @@
         1,
         2
       ],
-      "processInstanceKey": "2251799814112033",
-      "patientMrn": "MRN-58305",
+      "processInstanceKey": "2251799814150001",
+      "patientMrn": "MRN-15449",
       "state": "COMPLETED",
-      "seconds": 33,
+      "seconds": 32,
       "pass": true,
       "checks": [
         {
@@ -441,10 +433,10 @@
       "covers": [
         13
       ],
-      "processInstanceKey": "2251799814113093",
-      "patientMrn": "MRN-58306",
+      "processInstanceKey": "2251799814151073",
+      "patientMrn": "MRN-15450",
       "state": "COMPLETED",
-      "seconds": 35,
+      "seconds": 33,
       "pass": true,
       "checks": [
         {
@@ -464,10 +456,10 @@
         13,
         15
       ],
-      "processInstanceKey": "2251799814114196",
-      "patientMrn": "MRN-58307",
+      "processInstanceKey": "2251799814152178",
+      "patientMrn": "MRN-15451",
       "state": "COMPLETED",
-      "seconds": 35,
+      "seconds": 32,
       "pass": true,
       "checks": [
         {
@@ -491,10 +483,10 @@
         16,
         14
       ],
-      "processInstanceKey": "2251799814117023",
-      "patientMrn": "MRN-95232",
+      "processInstanceKey": "2251799814143511",
+      "patientMrn": "MRN-15443",
       "state": "COMPLETED",
-      "seconds": 27,
+      "seconds": 25,
       "pass": true,
       "checks": [
         {
@@ -507,6 +499,66 @@
         },
         {
           "name": "Process COMPLETED",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "id": "TC16",
+      "title": "Admin rejects the discharge request -> \"Approved?\" = No -> plan rejected, requester informed",
+      "covers": [
+        2
+      ],
+      "processInstanceKey": "2251799814142357",
+      "patientMrn": "MRN-15441",
+      "state": "COMPLETED",
+      "seconds": 9,
+      "pass": true,
+      "checks": [
+        {
+          "name": "Request waited for the ADMIN approval task",
+          "ok": true
+        },
+        {
+          "name": "Gateway \"Approved?\" took the No branch",
+          "ok": true
+        },
+        {
+          "name": "No care plan or nurse was created",
+          "ok": true
+        },
+        {
+          "name": "Workflow marked REJECTED, patient PLAN_REJECTED",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "id": "TC17",
+      "title": "Role check: the ward USER cannot complete the ADMIN approval task (HTTP 403)",
+      "covers": [
+        2
+      ],
+      "processInstanceKey": "2251799814142511",
+      "patientMrn": "MRN-15442",
+      "state": "COMPLETED",
+      "seconds": 25,
+      "pass": true,
+      "checks": [
+        {
+          "name": "Approval task is not in the USER inbox",
+          "ok": true
+        },
+        {
+          "name": "USER completing it gets 403 Forbidden",
+          "ok": true
+        },
+        {
+          "name": "Call without login gets 401",
+          "ok": true
+        },
+        {
+          "name": "ADMIN approved it and the plan completed",
           "ok": true
         }
       ]

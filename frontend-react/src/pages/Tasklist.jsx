@@ -8,35 +8,25 @@ import StatusBadge from '../components/StatusBadge.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { TASK_FORMS } from '../tasks/index.js';
 import { asList, fmtDate, fmtDateTime, humanize } from '../format.js';
+import { useAuth } from '../auth.jsx';
 
-const STORAGE_KEY = 'hh.tasklist.user';
+const STORAGE_KEY = 'hh.tasklist.actAs';
 const HOMECARE_PROCESSES = ['home-healthcare-dispatch', 'pharmacy-prescription-fulfillment'];
 const PHYSIOS = ['physio.rahul', 'physio.meena'];
 
-const GROUP_OPTIONS = [
-  { value: 'all', label: 'All tasks', query: {}, actingUser: 'coordinator' },
-  { value: 'group:coordinators', label: 'Coordinator (group coordinators)', query: { candidateGroup: 'coordinators' }, actingUser: 'coordinator' },
-  { value: 'group:doctors', label: 'Doctor (group doctors)', query: { candidateGroup: 'doctors' }, actingUser: 'doctor' },
-  { value: 'group:physiotherapists', label: 'Physiotherapists (group physiotherapists)', query: { candidateGroup: 'physiotherapists' }, actingUser: 'physio.rahul' },
-  { value: 'group:nurses', label: 'Nurses (group nurses)', query: { candidateGroup: 'nurses' }, actingUser: 'nurse' },
-];
-
-function readStored() {
+/*
+ * The backend already filters GET /api/tasks by role:
+ *   USER  -> nurse / physio tasks ("My tasks")
+ *   ADMIN -> approval / coordinator / doctor tasks ("Approvals & decisions")
+ * A USER may additionally pick a nurse or physio to act as: the list is then filtered by that
+ * assignee and claims are made for that person. Completions always send the logged-in username.
+ */
+function readActAs() {
   try {
-    return localStorage.getItem(STORAGE_KEY) || 'all';
+    return localStorage.getItem(STORAGE_KEY) || '';
   } catch {
-    return 'all';
+    return '';
   }
-}
-
-export function resolveUser(value) {
-  const g = GROUP_OPTIONS.find((o) => o.value === value);
-  if (g) return g;
-  if (value?.startsWith('user:')) {
-    const u = value.slice(5);
-    return { value, label: u, query: { assignee: u }, actingUser: u };
-  }
-  return GROUP_OPTIONS[0];
 }
 
 function TaskContext({ ctx }) {
@@ -60,7 +50,7 @@ function TaskContext({ ctx }) {
   return <KeyValue items={items} />;
 }
 
-function TaskDetail({ taskKey, actingUser, nurses, onCompleted, onClaimed }) {
+function TaskDetail({ taskKey, claimAs, actingUser, nurses, onCompleted, onClaimed }) {
   const detail = useApi(() => api.task(taskKey), [taskKey]);
   const toast = useToast();
   const [busy, setBusy] = useState(null);
@@ -71,14 +61,10 @@ function TaskDetail({ taskKey, actingUser, nurses, onCompleted, onClaimed }) {
   useEffect(() => setSubmitError(null), [taskKey]);
 
   const claim = async () => {
-    if (!actingUser.trim()) {
-      toast.error('Enter the user to act as before claiming');
-      return;
-    }
     setBusy('claim');
     try {
-      await api.claimTask(taskKey, actingUser.trim());
-      toast.success(`Task claimed by ${actingUser.trim()}`);
+      await api.claimTask(taskKey, claimAs);
+      toast.success(`Task claimed by ${claimAs}`);
       detail.reload();
       onClaimed();
     } catch (e) {
@@ -92,7 +78,7 @@ function TaskDetail({ taskKey, actingUser, nurses, onCompleted, onClaimed }) {
     setBusy('complete');
     setSubmitError(null);
     try {
-      await api.completeTask(taskKey, variables, actingUser.trim() || null);
+      await api.completeTask(taskKey, variables, actingUser);
       toast.success(`"${t.name}" completed`);
       onCompleted();
     } catch (e) {
@@ -118,14 +104,16 @@ function TaskDetail({ taskKey, actingUser, nurses, onCompleted, onClaimed }) {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-stone-500">Assignee: <span className="font-medium text-stone-700">{t.assignee || 'unassigned'}</span></span>
-          <button type="button" className="btn-secondary" onClick={claim} disabled={busy === 'claim' || t.assignee === actingUser.trim()}>
-            {busy === 'claim' ? 'Claiming...' : t.assignee ? `Re-assign to ${actingUser || '...'}` : 'Claim'}
+          <button type="button" className="btn-secondary" onClick={claim} disabled={busy === 'claim' || t.assignee === claimAs}>
+            {busy === 'claim' ? 'Claiming...' : t.assignee ? `Re-assign to ${claimAs}` : `Claim as ${claimAs}`}
           </button>
         </div>
       </div>
-      <div className="rounded-lg border border-stone-200 p-3">
-        <TaskContext ctx={t.context} />
-      </div>
+      {t.elementId !== 'Task_ApprovePlan' && (
+        <div className="rounded-lg border border-stone-200 p-3">
+          <TaskContext ctx={t.context} />
+        </div>
+      )}
       <ErrorBanner error={submitError} />
       {Form ? (
         <Form key={taskKey} task={t} context={t.context || {}} nurses={nurses} onSubmit={complete} submitting={busy === 'complete'} />
@@ -139,25 +127,25 @@ function TaskDetail({ taskKey, actingUser, nurses, onCompleted, onClaimed }) {
 }
 
 export default function Tasklist() {
-  const [userValue, setUserValue] = useState(readStored);
-  const user = resolveUser(userValue);
-  const [actingUser, setActingUser] = useState(user.actingUser);
+  const { user, isAdmin } = useAuth();
+  const username = user?.username || '';
+  const [actAs, setActAs] = useState(() => (isAdmin ? '' : readActAs()));
+  const claimAs = actAs || username;
   const [onlyHomecare, setOnlyHomecare] = useState(true);
   const [selected, setSelected] = useState(null);
   const nurses = useApi(api.nurses, []);
-  const tasks = useApi(() => api.tasks(user.query), [userValue], { intervalMs: 5000 });
+  const tasks = useApi(() => api.tasks(actAs ? { assignee: actAs } : {}), [actAs], { intervalMs: 5000 });
   const [patients, setPatients] = useState({});
   const requested = useRef(new Set());
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, userValue);
+      localStorage.setItem(STORAGE_KEY, actAs);
     } catch {
       /* storage unavailable */
     }
-    setActingUser(resolveUser(userValue).actingUser);
     setSelected(null);
-  }, [userValue]);
+  }, [actAs]);
 
   const rows = useMemo(
     () => (tasks.data || []).filter((t) => !onlyHomecare || HOMECARE_PROCESSES.includes(t.processDefinitionId)),
@@ -179,33 +167,37 @@ export default function Tasklist() {
     if (selected && tasks.data && !tasks.data.some((t) => t.userTaskKey === selected)) setSelected(null);
   }, [tasks.data, selected]);
 
-  const nurseOptions = (nurses.data || []).map((n) => ({ value: `user:${n.username}`, label: `${n.fullName} (${n.username})` }));
+  const title = isAdmin ? 'Approvals & decisions' : 'My tasks';
+  const subtitle = isAdmin
+    ? 'Plan approvals, coordinator and doctor tasks waiting for an admin (refreshes every 5 s)'
+    : 'Nurse and physiotherapy tasks for ward staff (refreshes every 5 s)';
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Tasklist" subtitle="Camunda user tasks for coordinators, doctors, nurses and physiotherapists (refreshes every 5 s)" />
+      <PageHeader title={title} subtitle={subtitle} />
       <div className="card flex flex-wrap items-end gap-4 p-4">
-        <div className="min-w-[16rem] flex-1">
-          <label htmlFor="tl-user" className="label">View tasks for</label>
-          <select id="tl-user" className="input" value={userValue} onChange={(e) => setUserValue(e.target.value)}>
-            {GROUP_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-            <optgroup label="Nurses (assignee)">
-              {nurseOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </optgroup>
-            <optgroup label="Physiotherapists (assignee)">
-              {PHYSIOS.map((p) => <option key={p} value={`user:${p}`}>{p}</option>)}
-            </optgroup>
-          </select>
-        </div>
-        <div className="w-48">
-          <label htmlFor="tl-acting" className="label">Acting as (claim / complete)</label>
-          <input id="tl-acting" className="input font-mono" value={actingUser} onChange={(e) => setActingUser(e.target.value)} />
-        </div>
+        {!isAdmin && (
+          <div className="min-w-[16rem] flex-1">
+            <label htmlFor="tl-actas" className="label">Act as nurse / physio (optional)</label>
+            <select id="tl-actas" className="input" value={actAs} onChange={(e) => setActAs(e.target.value)}>
+              <option value="">All my tasks (claim as {username})</option>
+              <optgroup label="Nurses">
+                {(nurses.data || []).map((n) => <option key={n.username} value={n.username}>{n.fullName} ({n.username})</option>)}
+              </optgroup>
+              <optgroup label="Physiotherapists">
+                {PHYSIOS.map((p) => <option key={p} value={p}>{p}</option>)}
+              </optgroup>
+            </select>
+          </div>
+        )}
+        <p className="pb-2 text-sm text-stone-600">
+          Signed in as <span className="font-mono font-medium text-stone-800">{username}</span>
+        </p>
         <label className="flex items-center gap-2 pb-2 text-sm text-stone-600">
           <input type="checkbox" className="h-4 w-4 accent-brand-700" checked={onlyHomecare} onChange={(e) => setOnlyHomecare(e.target.checked)} />
           Home-care processes only
         </label>
-        <button type="button" className="btn-secondary mb-0.5" onClick={tasks.reload}>Refresh</button>
+        <button type="button" className="btn-secondary mb-0.5 ml-auto" onClick={tasks.reload}>Refresh</button>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-5">
@@ -214,7 +206,7 @@ export default function Tasklist() {
           {tasks.loading && !tasks.data ? (
             <Spinner label="Loading tasks..." />
           ) : rows.length === 0 ? (
-            <EmptyState title="No open tasks">Nothing is waiting for {user.label}. The list refreshes automatically.</EmptyState>
+            <EmptyState title="No open tasks">Nothing is waiting for {actAs || (isAdmin ? 'admins' : username)}. The list refreshes automatically.</EmptyState>
           ) : (
             <ul className="divide-y divide-stone-100 overflow-hidden rounded-lg border border-stone-200">
               {rows.map((t) => (
@@ -244,7 +236,8 @@ export default function Tasklist() {
           {selected ? (
             <TaskDetail
               taskKey={selected}
-              actingUser={actingUser}
+              claimAs={claimAs}
+              actingUser={username}
               nurses={nurses.data || []}
               onClaimed={tasks.reload}
               onCompleted={() => {

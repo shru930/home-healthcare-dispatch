@@ -2,7 +2,13 @@
  * Single REST client for the Spring Boot backend. All paths are relative (/api/...) so the same
  * build works behind the Vite dev proxy and behind nginx in Docker.
  * Errors are thrown as ApiError carrying the server's `message` and `details[]`.
+ *
+ * Auth: every call sends `Authorization: Bearer <token>` when logged in. A 401 (except on the
+ * login call itself) clears the session and runs the unauthorized handler (go to /login).
+ * A 403 is thrown like any other error so the page can show the server's message.
  */
+import { authHeaders, clearSession } from './session.js';
+
 export class ApiError extends Error {
   constructor(message, { status = 0, details = [], path = '' } = {}) {
     super(message);
@@ -19,6 +25,18 @@ function formatMessage(body, status, statusText) {
   return details.length ? `${base}: ${details.join('; ')}` : base;
 }
 
+const LOGIN_PATH = '/api/auth/login';
+
+function defaultUnauthorized() {
+  if (typeof window !== 'undefined' && window.location.pathname !== '/login') window.location.assign('/login');
+}
+let unauthorizedHandler = defaultUnauthorized;
+
+/** The AuthProvider registers a handler that resets its state and navigates to /login. */
+export function setUnauthorizedHandler(fn) {
+  unauthorizedHandler = fn || defaultUnauthorized;
+}
+
 export async function request(path, { method = 'GET', body, query } = {}) {
   let url = path;
   if (query) {
@@ -29,7 +47,7 @@ export async function request(path, { method = 'GET', body, query } = {}) {
     const s = qs.toString();
     if (s) url += (url.includes('?') ? '&' : '?') + s;
   }
-  const init = { method, headers: { Accept: 'application/json' } };
+  const init = { method, headers: { Accept: 'application/json', ...authHeaders() } };
   if (body !== undefined) {
     init.headers['Content-Type'] = 'application/json';
     init.body = JSON.stringify(body);
@@ -51,6 +69,10 @@ export async function request(path, { method = 'GET', body, query } = {}) {
       data = text;
     }
   }
+  if (res.status === 401 && path !== LOGIN_PATH) {
+    clearSession();
+    unauthorizedHandler();
+  }
   if (!res.ok) {
     const obj = data && typeof data === 'object' ? data : { message: typeof data === 'string' && data ? data : undefined };
     throw new ApiError(formatMessage(obj, res.status, res.statusText), {
@@ -67,6 +89,10 @@ const post = (p, body) => request(p, { method: 'POST', body: body ?? {} });
 const patch = (p, body) => request(p, { method: 'PATCH', body });
 
 export const api = {
+  login: (username, password) => post(LOGIN_PATH, { username, password }),
+  me: () => get('/api/auth/me'),
+  logout: () => post('/api/auth/logout'),
+
   dashboard: () => get('/api/dashboard'),
   workflows: () => get('/api/workflows'),
   workflowStatus: (key) => get(`/api/workflows/${encodeURIComponent(key)}/status`),
