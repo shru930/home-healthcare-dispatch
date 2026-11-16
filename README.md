@@ -611,7 +611,7 @@ Each diagram is followed by the matching **Camunda Operate** screenshot.
 ![Operate instances](documentation/screenshots/20-operate-instances.png)
 *Camunda Operate: all `home-healthcare-dispatch` instances created by the test runs and the live demo cases (completed, active, cancelled, and one with an incident).*
 
-### 12.1 Happy path: TC01 (process instance 2251799813864477)
+### 12.1 Happy path: TC01 (process instance 2251799814119230)
 ![TC01 full path](documentation/diagrams/exec-tc01-happy-path-full.png)
 
 | Nurse dispatch | Seven sequential visits |
